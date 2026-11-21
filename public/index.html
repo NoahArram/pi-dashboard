@@ -1275,7 +1275,7 @@ async function showPhoto(first) {
   nx.classList.add('show'); if (old && old !== nx) old.classList.remove('show');
   if (first) requestAnimationFrame(() => requestAnimationFrame(() => nx.style.transition = ''));
   saver.cur = 1 - saver.cur;
-  const corners = ['bl', 'tr', 'br', 'tl']; $('#sclock').className = corners[saver.corner++ % 4];
+  $('#sclock').className = 'bl'; // clock and date stay bottom left
 }
 async function showSaver() {
   if (saver.on) return; closeSettings();
