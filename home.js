@@ -91,13 +91,16 @@ module.exports = function init({ CFG, json, readJson, writeJson, sameOrigin }) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(q.from || '')) { const [y, m, d] = q.from.split('-').map(Number); const f = new Date(y, m - 1, d); if (!isNaN(f) && Math.abs(f - from) < 800 * 864e5) from.setTime(+f); }
     const days = Math.max(1, Math.min(31, +q.days || 14)), to = new Date(from.getFullYear(), from.getMonth(), from.getDate() + days);
     if ([...cache.keys()].length > 80) clearCal();
-    return cached('cal:' + from.toDateString() + ':' + days, 5 * 60e3, async () => {
+    const ck = 'cal:' + from.toDateString() + ':' + days;
+    const out = await cached(ck, 5 * 60e3, async () => {
       const res = await Promise.allSettled(conf.calendars.map(c => loadCal(c, from, to)));
       const events = [], errors = [];
       res.forEach((r, i) => r.status === 'fulfilled' ? events.push(...r.value) : errors.push({ cal: conf.calendars[i].id, error: String(r.reason?.message || r.reason).slice(0, 120) }));
       events.sort((a, b) => a.start < b.start ? -1 : a.start > b.start ? 1 : 0);
       return { events: events.slice(0, 400), errors };
     });
+    if (out.errors?.length) { const c = cache.get(ck); if (c) c.at = Date.now() - 5 * 60e3 + 20e3; } // failed feeds: retry in 20 s, not 5 min
+    return out;
   }
 
   /* ---------- Todoist (API v1, personal token) ---------- */
