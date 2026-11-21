@@ -207,6 +207,35 @@ h2{font-size:19px;margin:28px 0 12px;color:var(--text)}
 .ev .lc{font-size:13px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ev.past{opacity:.42}
 .ev.now{background:var(--panel2)}
+
+/* 3-day calendar */
+#w-cal{padding-bottom:clamp(8px,.9vw,14px)}
+#cal-head{display:grid;grid-template-columns:44px repeat(3,minmax(0,1fr));gap:0;margin:0 0 0;padding-bottom:6px;border-bottom:1px solid var(--line)}
+#cal-head .dh{padding:0 6px;text-align:left;min-width:0}
+#cal-head .dn{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:650;display:flex;align-items:baseline;gap:7px}
+#cal-head .dn b{font-size:clamp(20px,1.9vw,30px);font-weight:500;letter-spacing:-.02em;color:var(--text);line-height:1}
+#cal-head .dh.today .dn{color:var(--accent)}
+#cal-head .dh.today .dn b{background:var(--accent);color:#04120a;border-radius:999px;padding:3px 10px;font-weight:650}
+#cal-head .ad{margin-top:6px;display:flex;flex-direction:column;gap:3px;min-height:0}
+#cal-head .ad div{font-size:12px;font-weight:600;border-radius:6px;padding:2px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:color-mix(in srgb,var(--c) 30%,var(--panel));border-left:3px solid var(--c)}
+#cal-head .ad i{font-style:normal;font-size:11px;color:var(--faint);padding-left:4px}
+#cal-list{margin-top:0}
+.cg{position:relative;display:grid;grid-template-columns:44px repeat(3,minmax(0,1fr));height:calc(var(--hh) * 24)}
+.cg .hr{position:absolute;left:0;width:44px;font-size:11px;color:var(--faint);text-align:right;padding-right:8px;font-variant-numeric:tabular-nums;transform:translateY(-7px)}
+.cg .dc{position:relative;border-left:1px solid var(--line);background:repeating-linear-gradient(to bottom,transparent 0,transparent calc(var(--hh) - 1px),rgba(255,255,255,.055) calc(var(--hh) - 1px),rgba(255,255,255,.055) var(--hh))}
+.cg .dc.today{background-color:rgba(255,255,255,.028)}
+.ce{position:absolute;box-sizing:border-box;border-radius:8px;padding:3px 7px;overflow:hidden;border-left:3px solid var(--c);background:color-mix(in srgb,var(--c) 24%,var(--panel));color:var(--text);min-width:0}
+.ce .t{font-size:clamp(12px,1vw,15px);font-weight:620;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.ce .m{font-size:11px;color:var(--dim);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.ce.past{opacity:.42}
+.ce.now{box-shadow:0 0 0 1.5px var(--c)}
+.nowline{position:absolute;left:0;right:0;height:0;border-top:2px solid #ff5d5d;z-index:3;pointer-events:none}
+.nowline::before{content:"";position:absolute;left:-5px;top:-6px;width:10px;height:10px;border-radius:50%;background:#ff5d5d}
+#next.none{color:var(--faint)}
+#cal-today{background:var(--accent);color:#04120a;font:inherit;font-size:12px;font-weight:700;letter-spacing:.04em;border:0;border-radius:999px;padding:5px 13px;margin-right:10px;cursor:pointer}
+#cal-today[hidden]{display:none}
+#cal-head,#cal-list .cg{will-change:transform}
+.nowchip{position:absolute;left:2px;width:40px;text-align:center;font-size:11px;font-weight:700;color:#fff;background:#ff5d5d;border-radius:6px;padding:1px 0;transform:translateY(-50%);z-index:4;pointer-events:none;font-variant-numeric:tabular-nums}
 .empty2{color:var(--faint);padding:14px 4px;font-size:15px;line-height:1.5}
 .td{display:flex;align-items:center;gap:14px;padding:6px 4px;border-radius:12px;transition:opacity .35s,transform .35s,max-height .4s;max-height:90px;overflow:hidden}
 .td.done{opacity:0;transform:translateX(30px);max-height:0;padding:0}
@@ -264,7 +293,7 @@ body.ambient #rail,body.ambient #mini{opacity:0}
   <div id="hwrap">
     <div class="w" id="w-clock"><div id="clk">--:--</div><div id="date"></div><div id="next"></div></div>
     <div class="w" id="w-weather"><h3><b id="wx-loc" style="font-weight:650">Weather</b><span id="wx-up"></span></h3><div id="wx-body"></div></div>
-    <div class="w" id="w-cal"><h3>Calendar<span id="cal-n"></span></h3><div class="scroll" id="cal-list"></div></div>
+    <div class="w" id="w-cal"><h3>Calendar<span><button id="cal-today" hidden>Today</button><span id="cal-n"></span></span></h3><div id="cal-head"></div><div class="scroll" id="cal-list"></div></div>
     <div class="w" id="w-todo"><h3>To do<span id="td-n"></span></h3><div class="scroll" id="td-list"></div></div>
   </div>
   <button id="hgear" aria-label="Settings"><svg viewBox="0 0 24 24"><path d="M19.14 12.94a7.07 7.07 0 0 0 .06-.94c0-.32-.02-.64-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7 7 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.61.22L2.65 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.12.22.37.29.61.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.26.42.5.42h3.84c.24 0 .45-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.49 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2"/></svg></button>
@@ -977,7 +1006,7 @@ $('#hgear').onclick = () => { setPage(1); go('settings'); };
   const pg = $('#pager'); let id = null, sx = 0, sy = 0, dx = 0, mode = 0, W = 1, t0 = 0;
   pg.addEventListener('pointerdown', e => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    const ok = PG.page === 0 ? !!e.target.closest('#home') : !!e.target.closest('#rail');
+    const ok = PG.page === 0 ? !!e.target.closest('#home') && !e.target.closest('#w-cal') : !!e.target.closest('#rail');
     if (!ok) return;
     id = e.pointerId; sx = e.clientX; sy = e.clientY; dx = 0; mode = 0; W = innerWidth; t0 = performance.now();
   });
@@ -1049,33 +1078,101 @@ function renderWeather() {
 /* ---- calendar ---- */
 const CAL_FALLBACK = { work: '#4da3ff', uni: '#b07cff', home: '#ff9f43' };
 const calColor = id => H.cfg?.calendars?.find(c => c.id === id)?.color || CAL_FALLBACK[id] || '#4da3ff';
-let calKey = '';
-function renderCal() {
-  const el = $('#cal-list'), c = H.cal, now = new Date();
-  if (!c) { el.innerHTML = '<div class="empty2">Loading…</div>'; return; }
-  if (!H.cfg?.calendars?.length && !H.cfg?.demo && !c.events?.length) { el.innerHTML = '<div class="empty2">No calendars yet. Add your Google or Outlook calendar links in Setup.</div>'; $('#cal-n').textContent = ''; return; }
-  const out = []; let shown = 0;
-  for (let i = 0; i < 7 && shown < 30; i++) {
-    const a = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i), b = new Date(+a + 864e5);
-    const evs = c.events.filter(e => { const s = new Date(e.start), en = new Date(e.end); return e.allDay ? (s < b && en > a) : (s >= a && s < b); });
-    if (!evs.length && i > 0) continue;
-    evs.sort((x, y) => (y.allDay - x.allDay) || (x.start < y.start ? -1 : 1));
-    out.push(`<div class="dl">${i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : a.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}</div>`);
-    if (!evs.length) out.push('<div class="empty2" style="padding:6px 4px">Nothing on today</div>');
-    for (const e of evs) {
-      const s = new Date(e.start), en = new Date(e.end), past = !e.allDay && en <= now && i === 0, cur = !e.allDay && s <= now && en > now;
-      out.push(`<div class="ev${past ? ' past' : ''}${cur ? ' now' : ''}"><div class="tm">${e.allDay ? 'All day' : hhmm(s)}</div><div class="bar" style="background:${calColor(e.cal)}"></div><div class="tx"><div class="tt">${esc(e.title)}</div>${e.location ? `<div class="lc">${esc(e.location)}</div>` : ''}</div></div>`);
-      shown++;
-    }
-  }
-  const html = out.join('') + (c.errors?.length ? `<div class="empty2">Couldn’t load ${c.errors.length} calendar${c.errors.length > 1 ? 's' : ''}. Check the links in Setup.</div>` : '');
-  if (html !== calKey) { calKey = html; const top = el.scrollTop; el.innerHTML = html; el.scrollTop = top; }
-  $('#cal-n').textContent = '';
-  renderNext();
+let calKey = '', calScroll = '', calOff = 0, calTimer = 0;
+const CAL_HH = 60, calCache = new Map(); // offset -> { at, events, errors }
+const isoDay = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const calStartOf = off => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate() + off); };
+function layoutDay(list) { // side-by-side columns for overlapping events
+  list.sort((x, y) => x.s - y.s || y.e - x.e);
+  const res = []; let cluster = [], end = 0;
+  const flush = () => { const cols = []; for (const it of cluster) { let c = cols.findIndex(t => t <= it.s); if (c < 0) { c = cols.length; cols.push(0); } cols[c] = it.e; it.col = c; } cluster.forEach(it => { it.cols = cols.length; res.push(it); }); cluster = []; };
+  for (const it of list) { if (cluster.length && it.s >= end) { flush(); end = 0; } cluster.push(it); end = Math.max(end, it.e); }
+  if (cluster.length) flush();
+  return res;
 }
+const calData = off => off === 0 ? H.cal : (calCache.get(off) || null);
+async function calFetch(off, force) {
+  if (off === 0) return;
+  const c = calCache.get(off); if (c && !force && Date.now() - c.at < 5 * 60e3) return;
+  try { const r = await jget(`/api/calendar?from=${isoDay(calStartOf(off - 1))}&days=5`); calCache.set(off, { ...r, at: Date.now() }); if (off === calOff) renderCal(); } catch {}
+}
+const calPrefetch = () => [calOff - 3, calOff + 3].forEach(o => calFetch(o));
+function renderCal() {
+  const el = $('#cal-list'), hd = $('#cal-head'), now = new Date(), c0 = H.cal;
+  if (!c0) { hd.innerHTML = ''; el.innerHTML = '<div class="empty2">Loading…</div>'; return; }
+  if (!H.cfg?.calendars?.length && !H.cfg?.demo && !c0.events?.length) { hd.innerHTML = ''; el.innerHTML = '<div class="empty2">No calendars yet. Add your Google or Outlook calendar links in Setup.</div>'; $('#cal-n').textContent = ''; $('#cal-today').hidden = true; calKey = ''; renderNext(); return; }
+  const c = calData(calOff), loading = !c, events = c?.events || [];
+  if (loading) calFetch(calOff, true);
+  const days = [0, 1, 2].map(i => { const a = calStartOf(calOff + i); return { a, b: new Date(a.getFullYear(), a.getMonth(), a.getDate() + 1), today: isoDay(a) === isoDay(now) }; });
+  const head = [], cols = []; let minH = 24;
+  for (const d of days) {
+    const ad = [], tm = [];
+    for (const e of events) {
+      const s = new Date(e.start), en = new Date(e.end);
+      if (e.allDay) { if (s < d.b && en > d.a) ad.push(e); continue; }
+      if (s < d.b && en > d.a) { const ss = Math.max(+s, +d.a), ee = Math.min(+en, +d.b); const t = { ev: e, s: (ss - d.a) / 36e5, endAbs: ee, full: s, fullEnd: en }; t.e = Math.max((ee - d.a) / 36e5, t.s + 0.4); minH = Math.min(minH, t.s); tm.push(t); }
+    }
+    head.push(`<div class="dh${d.today ? ' today' : ''}"><div class="dn">${d.today ? 'Today' : d.a.toLocaleDateString('en-GB', { weekday: 'short' })} <b>${d.a.getDate()}</b></div><div class="ad">${ad.slice(0, 2).map(e => `<div style="--c:${calColor(e.cal)}">${esc(e.title)}</div>`).join('')}${ad.length > 2 ? `<i>+${ad.length - 2} more</i>` : ''}</div></div>`);
+    cols.push({ d, tm });
+  }
+  const hh = CAL_HH;
+  let chip = '';
+  const colHtml = cols.map(({ d, tm }) => {
+    const evs = layoutDay(tm).map(t => {
+      const top = t.s * hh, h = Math.max(24, (t.e - t.s) * hh - 2), w = 100 / t.cols;
+      const past = t.endAbs <= now, cur = t.full <= now && t.fullEnd > now;
+      return `<div class="ce${past ? ' past' : ''}${cur ? ' now' : ''}" style="--c:${calColor(t.ev.cal)};top:${top}px;height:${h}px;left:calc(${t.col * w}% + 2px);width:calc(${w}% - 4px)"><div class="t">${esc(t.ev.title)}</div>${h >= 40 ? `<div class="m">${hhmm(t.full)}–${hhmm(t.fullEnd)}</div>` : ''}${h >= 70 && t.ev.location ? `<div class="m">${esc(t.ev.location)}</div>` : ''}</div>`;
+    }).join('');
+    let nl = '';
+    if (d.today) { const y = ((now - d.a) / 36e5) * hh; nl = `<div class="nowline" style="top:${y}px"></div>`; chip = `<div class="nowchip" style="top:${y}px">${hhmm(now)}</div>`; }
+    return `<div class="dc${d.today ? ' today' : ''}">${evs}${nl}</div>`;
+  }).join('');
+  const hours = Array.from({ length: 23 }, (_, i) => `<div class="hr" style="top:${(i + 1) * hh}px">${pad2(i + 1)}:00</div>`).join('');
+  const hdHtml = `<div></div>${head.join('')}`, bodyHtml = `<div class="cg" style="--hh:${hh}px"><div></div>${hours}${colHtml}${chip}</div>`;
+  const key = hdHtml + bodyHtml;
+  if (key !== calKey) {
+    calKey = key; const top = el.scrollTop; hd.innerHTML = hdHtml; el.innerHTML = bodyHtml;
+    const sk = calOff + '|' + isoDay(now);
+    if (sk !== calScroll && !loading) { calScroll = sk; const first = minH < 24 ? minH : 8; const anchor = calOff === 0 ? Math.max(0, now.getHours() - 1) : first; el.scrollTop = Math.max(0, (anchor - 0.25) * hh); } else el.scrollTop = top;
+  }
+  const f = d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), a0 = days[0].a, a2 = days[2].a;
+  $('#cal-n').textContent = loading ? 'Loading…' : (c0.errors?.length ? `${c0.errors.length} feed${c0.errors.length > 1 ? 's' : ''} failed` : (a0.getMonth() === a2.getMonth() ? `${a0.getDate()}–${f(a2)}` : `${f(a0)} – ${f(a2)}`));
+  $('#cal-today').hidden = calOff === 0;
+  renderNext(); calPrefetch();
+}
+function calGo(off, instant) { clearTimeout(calTimer); calOff = off; if (off !== 0) calTimer = setTimeout(() => calGo(0), 120e3); calKey = ''; renderCal(); }
+$('#cal-today').onclick = () => { const dir = calOff > 0 ? -1 : 1; calSlide(dir, 0); };
+function calSlide(dir, target) { // dir: +1 content leaves to the left (going forward)
+  const hd = $('#cal-head'), el = $('#cal-list'), W = $('#w-cal').clientWidth;
+  const set = (x, anim) => [hd, el].forEach(n => { const t = n === el ? n.firstElementChild : n; if (!t) return; t.style.transition = anim ? 'transform .2s ease' : 'none'; t.style.transform = `translateX(${x}px)`; });
+  set(-dir * W, true);
+  setTimeout(() => { calGo(target); set(dir * W, false); requestAnimationFrame(() => requestAnimationFrame(() => set(0, true))); }, 200);
+}
+(function calSwipe() {
+  const w = $('#w-cal'); let id = null, sx = 0, sy = 0, dx = 0, mode = 0, t0 = 0;
+  const move = x => { const hd = $('#cal-head'), g = $('#cal-list').firstElementChild; hd.style.transition = 'none'; hd.style.transform = `translateX(${x}px)`; if (g) { g.style.transition = 'none'; g.style.transform = `translateX(${x}px)`; } };
+  w.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; if (e.pointerType === 'mouse' && e.button !== 0) return; id = e.pointerId; sx = e.clientX; sy = e.clientY; dx = 0; mode = 0; t0 = performance.now(); });
+  w.addEventListener('pointermove', e => {
+    if (e.pointerId !== id) return; const mx = e.clientX - sx, my = e.clientY - sy;
+    if (mode === 0 && Math.hypot(mx, my) > 10) { mode = Math.abs(mx) > Math.abs(my) * 1.2 ? 1 : 2; if (mode === 1) { try { w.setPointerCapture(id); } catch {} } }
+    if (mode === 1) { dx = mx; move(dx); }
+  });
+  w.addEventListener('touchmove', e => { if (mode === 1 && e.cancelable) e.preventDefault(); }, { passive: false });
+  const end = () => {
+    if (id === null) return; id = null; if (mode !== 1) return; PG.sup = performance.now() + 400;
+    const W = w.clientWidth, fast = Math.abs(dx) / Math.max(1, performance.now() - t0) > 0.45;
+    if (Math.abs(dx) > W * 0.2 || (fast && Math.abs(dx) > 60)) { const dir = dx < 0 ? 1 : -1, hd = $('#cal-head'), g = $('#cal-list').firstElementChild; [hd, g].forEach(n => { if (n) { n.style.transition = 'transform .18s ease'; n.style.transform = `translateX(${-dir * W}px)`; } }); setTimeout(() => { calGo(calOff + dir * 3); [hd, $('#cal-list').firstElementChild].forEach(n => { if (n) { n.style.transition = 'none'; n.style.transform = `translateX(${dir * W}px)`; } }); requestAnimationFrame(() => requestAnimationFrame(() => [hd, $('#cal-list').firstElementChild].forEach(n => { if (n) { n.style.transition = 'transform .2s ease'; n.style.transform = 'translateX(0)'; } }))); }, 180); }
+    else [$('#cal-head'), $('#cal-list').firstElementChild].forEach(n => { if (n) { n.style.transition = 'transform .2s ease'; n.style.transform = 'translateX(0)'; } });
+  };
+  w.addEventListener('pointerup', end); w.addEventListener('pointercancel', end);
+})();
+setInterval(() => { if (PG.page === 0 && !saver.on) renderCal(); }, 60e3); // moves the now line
 function renderNext() {
-  const el = $('#next'), now = new Date(), nx = (H.cal?.events || []).find(e => !e.allDay && new Date(e.end) > now && new Date(e.start) < new Date(+now + 864e5));
-  if (!nx) { el.textContent = ''; return; }
+  const el = $('#next'), now = new Date(), eod = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  el.classList.remove('none');
+  if (!H.cal || (!H.cfg?.calendars?.length && !H.cfg?.demo && !H.cal.events?.length)) { el.textContent = ''; return; }
+  const nx = H.cal.events.filter(e => !e.allDay && new Date(e.end) > now && new Date(e.start) < eod).sort((x, y) => (x.start < y.start ? -1 : 1))[0];
+  if (!nx) { el.textContent = 'No more events today'; el.classList.add('none'); return; }
   const s = new Date(nx.start), m = Math.round((s - now) / 6e4);
   el.innerHTML = s <= now ? `<b>Now</b> ${esc(nx.title)}` : `<b>${m < 60 ? 'In ' + m + ' min' : hhmm(s)}</b> ${esc(nx.title)}`;
 }
@@ -1120,11 +1217,23 @@ setInterval(() => { load('wx', '/api/weather', renderWeather); load('cal', '/api
 /* ---- screensaver (photos) ---- */
 const saver = { on: false, list: [], i: 0, timer: 0, layers: [], cur: 0, corner: 0 };
 function updSaverClock() { const n = new Date(); $('#sclock').innerHTML = hhmm(n) + `<small>${n.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</small>`; }
+/* shuffled deck: every photo once per round, in random order, no repeats back to back, kept across screensaver sessions; new uploads are slotted in at random */
+let deck = [], deckKnown = new Set(), deckLast = null;
+async function refreshDeck() {
+  let list; try { list = (await jget('/api/photos')).map(p => p.n); } catch { return; }
+  const now = new Set(list); deck = deck.filter(n => now.has(n));
+  for (const n of list) if (!deckKnown.has(n)) deck.splice(Math.random() * (deck.length + 1) | 0, 0, n);
+  deckKnown = now;
+}
+async function nextPhoto() {
+  if (!deck.length) { await refreshDeck(); if (!deck.length) { deck = shuffle([...deckKnown]); if (deck.length > 1 && deck[0] === deckLast) { const j = 1 + (Math.random() * (deck.length - 1) | 0); [deck[0], deck[j]] = [deck[j], deck[0]]; } } }
+  deckLast = deck.shift() ?? null; return deckLast;
+}
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function mkSlide() { const d = document.createElement('div'); d.className = 'slide'; d.innerHTML = '<div class="bg"></div><div class="fg"></div>'; $('#saver').insertBefore(d, $('#snone')); return d; }
 async function showPhoto(first) {
   if (!saver.list.length) return;
-  const name = saver.list[saver.i++ % saver.list.length], url = '/photos/' + name;
+  const name = await nextPhoto(); if (!name) return; const url = '/photos/' + name;
   const img = new Image(); img.decoding = 'async'; img.src = url;
   try { await img.decode(); } catch { return; }
   if (!saver.on) return;
@@ -1140,7 +1249,7 @@ async function showPhoto(first) {
 async function showSaver() {
   if (saver.on) return;
   saver.on = true; setAmbient(false);
-  try { saver.list = shuffle((await jget('/api/photos')).map(p => p.n)); } catch { saver.list = []; }
+  await refreshDeck(); saver.list = [...deckKnown];
   saver.i = 0; $('#saver').classList.add('on'); updSaverClock();
   const none = $('#snone'); none.classList.toggle('on', !saver.list.length);
   if (!saver.list.length) none.innerHTML = 'No photos yet.<br>Add some from your phone:<br><b>' + (web.lan?.[0] ? `http://${web.lan[0]}:${web.port}/photos.html` : 'open /photos.html on the Pi’s address') + '</b>';
@@ -1149,7 +1258,7 @@ async function showSaver() {
   clearInterval(saver.timer);
   saver.timer = setInterval(() => showPhoto(false), Math.max(1, H.cfg?.saver?.photoMin || 5) * 60e3);
 }
-function hideSaver() { if (!saver.on) return; saver.on = false; clearInterval(saver.timer); $('#saver').classList.remove('on'); }
+function hideSaver() { if (!saver.on) return; if (calOff) calGo(0); saver.on = false; clearInterval(saver.timer); $('#saver').classList.remove('on'); }
 $('#saver').addEventListener('pointerdown', e => {
   e.preventDefault(); e.stopPropagation();
   hideSaver(); PG.sup = performance.now() + 400; lastAct = Date.now(); setPage(0, false);

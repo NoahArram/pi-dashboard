@@ -5,7 +5,7 @@ let ical = null; try { ical = require('node-ical'); } catch { console.error('nod
 
 module.exports = function init({ CFG, json, readJson, writeJson, sameOrigin }) {
   const CONF = path.join(CFG.dataDir, 'config.json');
-  const PHOTOS = path.join(CFG.dataDir, 'photos');
+  const PHOTOS = path.join(CFG.dataDir, 'photos'), ORIG = path.join(CFG.dataDir, 'originals'), THUMB = path.join(CFG.dataDir, 'thumbs');
   fs.mkdirSync(PHOTOS, { recursive: true, mode: 0o755 });
   const DEF = { location: null, calendars: [], todoistToken: '', saver: { photoMin: 5, idleMin: 3 }, weatherModel: 'ukmo_seamless', alarm: { enabled: true, delayMin: 15, volume: 30, autoOffMin: 2 }, defaultWake: '07:00', apiToken: '', corsOrigins: [] };
   let conf = { ...DEF, ...readJson(CONF, {}) }; conf.alarm = { ...DEF.alarm, ...conf.alarm }; conf.saver = { ...DEF.saver, ...conf.saver };
@@ -14,6 +14,7 @@ module.exports = function init({ CFG, json, readJson, writeJson, sameOrigin }) {
   const body = async (req, max) => { const ch = []; let n = 0; for await (const c of req) { n += c.length; if (n > max) return null; ch.push(c); } return Buffer.concat(ch); };
   const pub = () => ({ location: conf.location, calendars: conf.calendars.map(({ id, name, color }) => ({ id, name, color })), todoist: !!conf.todoistToken || CFG.demo, saver: conf.saver, weatherModel: conf.weatherModel, alarm: conf.alarm, defaultWake: conf.defaultWake, tokenSet: !!conf.apiToken, corsOrigins: conf.corsOrigins });
   const cache = new Map(); // key -> { at, v }
+  const clearCal = () => { for (const k of cache.keys()) if (k.startsWith('cal:')) cache.delete(k); };
   const cached = async (key, ttl, fn) => { const c = cache.get(key); if (c && Date.now() - c.at < ttl) return c.v; const v = await fn(); cache.set(key, { at: Date.now(), v }); return v; };
   const get = async (url, opt = {}) => { const r = await fetch(url, { ...opt, signal: AbortSignal.timeout(12000), headers: { 'User-Agent': 'pi-dashboard', ...(opt.headers || {}) } }); return r; };
 
@@ -76,19 +77,26 @@ module.exports = function init({ CFG, json, readJson, writeJson, sameOrigin }) {
     }
     return out;
   }
-  async function calendar() {
+  async function calendar(q = {}) {
     if (CFG.demo) {
       const t = new Date(); t.setMinutes(0, 0, 0); const at = (dh, len, title, cal, allDay = false, loc = '') => { const s = new Date(+t + dh * 36e5), e = new Date(+s + len * 36e5); return { cal, title, start: s.toISOString(), end: e.toISOString(), allDay, location: loc }; };
       const d0 = new Date(); d0.setHours(0, 0, 0, 0);
-      return { events: [at(-1, 1, 'Stand-up', 'work', false, 'Teams'), at(1, 1, 'FYP supervisor meeting', 'uni', false, 'Strathcona 215'), at(3, 2, 'Lecture: Security of Real World Systems', 'uni'), at(6, 1, 'Dinner with family', 'home'), at(26, 1, 'Dentist', 'home'), { cal: 'home', title: 'Mum’s birthday', start: new Date(+d0 + 864e5).toISOString(), end: new Date(+d0 + 2 * 864e5).toISOString(), allDay: true, location: '' }].sort((a, b) => a.start < b.start ? -1 : 1), errors: [] };
+      const base = [at(-1, 1, 'Stand-up', 'work', false, 'Teams'), at(1, 1, 'FYP supervisor meeting', 'uni', false, 'Strathcona 215'), at(3, 2, 'Lecture: Security of Real World Systems', 'uni'), at(6, 1, 'Dinner with family', 'home'), at(26, 1, 'Dentist', 'home'), { cal: 'home', title: 'Mum’s birthday', start: new Date(+d0 + 864e5).toISOString(), end: new Date(+d0 + 2 * 864e5).toISOString(), allDay: true, location: '' }]; // demo: repeat weekly so paging shows events in any window
+      const f0 = new Date(); f0.setHours(0, 0, 0, 0); let fd = f0; if (/^\d{4}-\d{2}-\d{2}$/.test(q.from || '')) { const [y, m, d] = q.from.split('-').map(Number); fd = new Date(y, m - 1, d); }
+      const fr = +fd, tt = fr + (Math.min(31, +q.days || 14)) * 864e5, out = [];
+      for (let w = -60; w <= 60; w++) for (const e of base) { const sh = w * 7 * 864e5, s2 = +new Date(e.start) + sh, e2 = +new Date(e.end) + sh; if (e2 > fr && s2 < tt) out.push({ ...e, start: new Date(s2).toISOString(), end: new Date(e2).toISOString() }); }
+      return { events: out.sort((a, b) => a.start < b.start ? -1 : 1), errors: [] };
     }
-    return cached('cal', 5 * 60e3, async () => {
-      const from = new Date(); from.setHours(0, 0, 0, 0); const to = new Date(+from + 8 * 864e5);
+    const from = new Date(); from.setHours(0, 0, 0, 0);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(q.from || '')) { const [y, m, d] = q.from.split('-').map(Number); const f = new Date(y, m - 1, d); if (!isNaN(f) && Math.abs(f - from) < 800 * 864e5) from.setTime(+f); }
+    const days = Math.max(1, Math.min(31, +q.days || 14)), to = new Date(from.getFullYear(), from.getMonth(), from.getDate() + days);
+    if ([...cache.keys()].length > 80) clearCal();
+    return cached('cal:' + from.toDateString() + ':' + days, 5 * 60e3, async () => {
       const res = await Promise.allSettled(conf.calendars.map(c => loadCal(c, from, to)));
       const events = [], errors = [];
       res.forEach((r, i) => r.status === 'fulfilled' ? events.push(...r.value) : errors.push({ cal: conf.calendars[i].id, error: String(r.reason?.message || r.reason).slice(0, 120) }));
       events.sort((a, b) => a.start < b.start ? -1 : a.start > b.start ? 1 : 0);
-      return { events: events.slice(0, 300), errors };
+      return { events: events.slice(0, 400), errors };
     });
   }
 
@@ -118,7 +126,12 @@ module.exports = function init({ CFG, json, readJson, writeJson, sameOrigin }) {
   /* ---------- photos ---------- */
   const EXT = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
   const sniff = b => b[0] === 0xff && b[1] === 0xd8 ? 'jpg' : (b[0] === 0x89 && b.toString('latin1', 1, 4) === 'PNG') ? 'png' : (b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') ? 'webp' : null;
-  const listPhotos = () => fs.readdirSync(PHOTOS).filter(f => /^[a-z0-9]+\.(jpg|png|webp)$/.test(f)).map(f => ({ n: f, t: fs.statSync(path.join(PHOTOS, f)).mtimeMs })).sort((a, b) => b.t - a.t);
+  const OEXT = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', avif: 'image/avif', heic: 'image/heic', heif: 'image/heif', tif: 'image/tiff', tiff: 'image/tiff', dng: 'image/x-adobe-dng' };
+  const base = n => n.replace(/\.[a-z0-9]+$/, '');
+  const origFile = n => { try { return fs.readdirSync(ORIG).find(f => base(f) === base(n)) || null; } catch { return null; } };
+  const listPhotos = () => { let o = new Set(); try { o = new Set(fs.readdirSync(ORIG).map(base)); } catch {} return fs.readdirSync(PHOTOS).filter(f => /^[a-z0-9]+\.(jpg|png|webp)$/.test(f)).map(f => ({ n: f, t: fs.statSync(path.join(PHOTOS, f)).mtimeMs, o: o.has(base(f)) })).sort((a, b) => b.t - a.t); };
+  const sendFile = (res, file, type, cache) => { fs.stat(file, (e, st) => { if (e) { res.writeHead(404); return res.end(); } res.writeHead(200, { 'Content-Type': type, 'Content-Length': st.size, 'Cache-Control': cache || 'public, max-age=86400' }); fs.createReadStream(file).pipe(res); }); };
+  const streamTo = (req, file, max) => new Promise(resolve => { let n = 0, bad = false; const ws = fs.createWriteStream(file); req.on('data', c => { n += c.length; if (n > max && !bad) { bad = true; req.destroy(); ws.destroy(); } }); req.pipe(ws); ws.on('finish', () => resolve(bad ? 0 : n)); ws.on('error', () => resolve(0)); req.on('error', () => { ws.destroy(); resolve(0); }); req.on('close', () => { if (bad) resolve(0); }); });
 
   /* ---------- router ---------- */
   const handle = async function handle(req, res, url) {
@@ -135,9 +148,9 @@ module.exports = function init({ CFG, json, readJson, writeJson, sameOrigin }) {
           const a = x.addCalendar, u = String(a.url || '').trim();
           if (!/^(https?|webcal):\/\//i.test(u)) return json(res, 400, { error: 'Calendar link must start with https:// or webcal://' }), true;
           if (conf.calendars.length >= 12) return json(res, 400, { error: 'Too many calendars' }), true;
-          conf.calendars.push({ id: Math.random().toString(36).slice(2, 8), name: String(a.name || 'Calendar').slice(0, 40), url: u, color: /^#[0-9a-f]{6}$/i.test(a.color) ? a.color : '#4da3ff' }); cache.delete('cal');
+          conf.calendars.push({ id: Math.random().toString(36).slice(2, 8), name: String(a.name || 'Calendar').slice(0, 40), url: u, color: /^#[0-9a-f]{6}$/i.test(a.color) ? a.color : '#4da3ff' }); clearCal();
         }
-        if (x.removeCalendar) { conf.calendars = conf.calendars.filter(c => c.id !== x.removeCalendar); cache.delete('cal'); }
+        if (x.removeCalendar) { conf.calendars = conf.calendars.filter(c => c.id !== x.removeCalendar); clearCal(); }
         if (x.saver) { const ph = Math.round(+x.saver.photoMin), id = Math.round(+x.saver.idleMin); if (ph >= 1 && ph <= 120) conf.saver.photoMin = ph; if (id >= 1 && id <= 120) conf.saver.idleMin = id; }
         if (x.alarm) { const a = x.alarm; if (typeof a.enabled === 'boolean') conf.alarm.enabled = a.enabled; const dm = Math.round(+a.delayMin), v = Math.round(+a.volume); if (dm >= 0 && dm <= 120) conf.alarm.delayMin = dm; const ao = +a.autoOffMin; if (ao >= 0.5 && ao <= 60) conf.alarm.autoOffMin = ao; if (v >= 1 && v <= 100) conf.alarm.volume = v; }
         if (typeof x.defaultWake === 'string' && /^([01]?\d|2[0-3]):[0-5]\d$/.test(x.defaultWake)) conf.defaultWake = x.defaultWake;
@@ -149,7 +162,7 @@ module.exports = function init({ CFG, json, readJson, writeJson, sameOrigin }) {
       }
       if (p === '/api/geocode' && m === 'GET') { const q = (url.searchParams.get('q') || '').trim().slice(0, 80); return json(res, 200, q.length < 2 ? [] : await geocode(q)), true; }
       if (p === '/api/weather' && m === 'GET') return json(res, 200, await weather()), true;
-      if (p === '/api/calendar' && m === 'GET') return json(res, 200, await calendar()), true;
+      if (p === '/api/calendar' && m === 'GET') return json(res, 200, await calendar(Object.fromEntries(url.searchParams))), true;
       if (p === '/api/todoist' && m === 'GET') return json(res, 200, await todoist()), true;
       if (p === '/api/todoist/close' && m === 'POST') {
         if (!guard(req, res)) return true;
@@ -161,19 +174,38 @@ module.exports = function init({ CFG, json, readJson, writeJson, sameOrigin }) {
         if (m === 'GET') return json(res, 200, listPhotos()), true;
         if (!guard(req, res)) return true;
         if (m === 'POST') {
-          const b = await body(req, 25 << 20); if (!b) return json(res, 413, { error: 'too big' }), true;
+          const b = await body(req, 80 << 20); if (!b) return json(res, 413, { error: 'too big' }), true;
           const ext = sniff(b); if (!ext) return json(res, 415, { error: 'JPEG, PNG or WebP only' }), true;
-          if (listPhotos().length >= 3000) return json(res, 400, { error: 'photo limit reached' }), true;
+          try { if (fs.statfsSync(CFG.dataDir).bavail * fs.statfsSync(CFG.dataDir).bsize < 2e9) return json(res, 507, { error: 'Pi storage nearly full' }), true; } catch {}
           const name = Date.now().toString(36) + Math.random().toString(36).slice(2, 7) + '.' + ext;
           fs.writeFileSync(path.join(PHOTOS, name), b); return json(res, 200, { n: name }), true;
         }
-        if (m === 'DELETE') { const n = url.searchParams.get('name') || ''; if (/^[a-z0-9]+\.(jpg|png|webp)$/.test(n)) fs.rmSync(path.join(PHOTOS, n), { force: true }); return json(res, 200, {}), true; }
+        if (m === 'DELETE') { const n = url.searchParams.get('name') || ''; if (/^[a-z0-9]+\.(jpg|png|webp)$/.test(n)) { fs.rmSync(path.join(PHOTOS, n), { force: true }); fs.rmSync(path.join(THUMB, base(n) + '.jpg'), { force: true }); const o = origFile(n); if (o) fs.rmSync(path.join(ORIG, o), { force: true }); } return json(res, 200, {}), true; }
         return json(res, 405, {}), true;
       }
+      // untouched original of a photo (stored next to the screen-size copy), streamed to disk
+      if (p === '/api/photos/original' && m === 'POST') {
+        if (!guard(req, res)) return true;
+        const n = url.searchParams.get('name') || '', ext = (url.searchParams.get('ext') || '').toLowerCase();
+        if (!/^[a-z0-9]+\.(jpg|png|webp)$/.test(n) || !fs.existsSync(path.join(PHOTOS, n))) return json(res, 404, { error: 'unknown photo' }), true;
+        if (!OEXT[ext]) return json(res, 415, { error: 'unsupported original format' }), true;
+        fs.mkdirSync(ORIG, { recursive: true }); const old = origFile(n); if (old) fs.rmSync(path.join(ORIG, old), { force: true });
+        const dest = path.join(ORIG, base(n) + '.' + ext), size = await streamTo(req, dest, 1 << 30);
+        if (!size) { fs.rmSync(dest, { force: true }); return json(res, 413, { error: 'original too big or upload failed' }), true; }
+        return json(res, 200, { ok: true, bytes: size }), true;
+      }
+      if (p === '/api/photos/thumb' && m === 'POST') {
+        if (!guard(req, res)) return true;
+        const n = url.searchParams.get('name') || ''; if (!/^[a-z0-9]+\.(jpg|png|webp)$/.test(n) || !fs.existsSync(path.join(PHOTOS, n))) return json(res, 404, {}), true;
+        const b = await body(req, 2 << 20); if (!b || sniff(b) !== 'jpg') return json(res, 415, {}), true;
+        fs.mkdirSync(THUMB, { recursive: true }); fs.writeFileSync(path.join(THUMB, base(n) + '.jpg'), b); return json(res, 200, { ok: true }), true;
+      }
       if (p.startsWith('/photos/') && m === 'GET') {
-        const n = p.slice(8); if (!/^[a-z0-9]+\.(jpg|png|webp)$/.test(n)) { res.writeHead(404); res.end(); return true; }
-        fs.readFile(path.join(PHOTOS, n), (e, d) => { if (e) { res.writeHead(404); return res.end(); } res.writeHead(200, { 'Content-Type': EXT[n.split('.')[1]], 'Cache-Control': 'public, max-age=86400' }); res.end(d); });
-        return true;
+        let kind = 'img', n = p.slice(8); const mm = n.match(/^(original|thumb)\/(.+)$/); if (mm) { kind = mm[1]; n = mm[2]; }
+        if (!/^[a-z0-9]+\.(jpg|png|webp)$/.test(n)) { res.writeHead(404); res.end(); return true; }
+        if (kind === 'original') { const o = origFile(n); if (o) sendFile(res, path.join(ORIG, o), OEXT[o.split('.').pop()] || 'application/octet-stream'); else sendFile(res, path.join(PHOTOS, n), EXT[n.split('.')[1]]); return true; }
+        if (kind === 'thumb') { const t = path.join(THUMB, base(n) + '.jpg'); sendFile(res, fs.existsSync(t) ? t : path.join(PHOTOS, n), fs.existsSync(t) ? 'image/jpeg' : EXT[n.split('.')[1]]); return true; }
+        sendFile(res, path.join(PHOTOS, n), EXT[n.split('.')[1]]); return true;
       }
     } catch (e) { console.error(p, e.message); if (!res.headersSent) json(res, 502, { error: String(e.message || e).slice(0, 120) }); return true; }
     return false;

@@ -201,8 +201,14 @@ $('#p-sleep').onclick=async()=>{const [h,m]=$('#p-time').value.split(':').map(Nu
   try{await api('/api/sleep',{method:'POST',json:{wake:isoLocal(d),alarm:$('#p-alarm').checked}});toast('Screen sleeping until '+hhmm(d));loadPi()}catch(e){toast('Couldn’t sleep the screen')}};
 $('#p-wake').onclick=async()=>{try{await api('/api/wake',{method:'POST'});toast('Waking');setTimeout(loadPi,600)}catch{toast('Failed')}};
 $('#p-test').onclick=async()=>{try{await api('/api/alarm/test',{method:'POST'});toast('Alarm should be showing on the Pi')}catch{toast('Failed')}};
-async function shrink(file){try{const bm=await createImageBitmap(file,{imageOrientation:'from-image'}),s=Math.min(1,2560/Math.max(bm.width,bm.height));if(s===1&&file.type==='image/jpeg'&&file.size<6e6)return file;const c=document.createElement('canvas');c.width=Math.round(bm.width*s);c.height=Math.round(bm.height*s);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);return await new Promise(r=>c.toBlob(r,'image/jpeg',.9))}catch{return file}}
-$('#p-up').onchange=async e=>{const fs=[...e.target.files];e.target.value='';let n=0,bad=0;for(const f of fs){$('#p-prog').textContent=`Uploading ${++n} of ${fs.length}…`;try{await api('/api/photos',{method:'POST',body:await shrink(f)})}catch{bad++}}$('#p-prog').textContent=bad?`${bad} failed`:'Added';loadPi()};
+const extOf=f=>{const m=/\.([a-z0-9]{1,5})$/i.exec(f.name);return m?m[1].toLowerCase():({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/heic':'heic','image/heif':'heif'}[f.type]||'jpg')};
+const sameOk=f=>['image/jpeg','image/png','image/webp'].includes(f.type);
+async function prep(file){ // screen copy (<=4K), thumbnail, untouched original
+  let bm;try{bm=await createImageBitmap(file,{imageOrientation:'from-image'})}catch{return sameOk(file)?{disp:file}:null}
+  try{const mk=(max,q)=>{const s=Math.min(1,max/Math.max(bm.width,bm.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(bm.width*s));c.height=Math.max(1,Math.round(bm.height*s));c.getContext('2d').drawImage(bm,0,0,c.width,c.height);return new Promise(r=>c.toBlob(r,'image/jpeg',q))};
+    const thumb=await mk(420,.8);if(Math.max(bm.width,bm.height)<=3840&&file.type==='image/jpeg')return{disp:file,thumb};
+    return{disp:(await mk(3840,.95))||file,thumb,orig:file}}catch{return sameOk(file)?{disp:file}:null}}
+$('#p-up').onchange=async e=>{const fs=[...e.target.files];e.target.value='';let n=0,bad=0;for(const f of fs){$('#p-prog').textContent=`Uploading ${++n} of ${fs.length}…`;try{const x=await prep(f);if(!x)throw 0;const {n:id}=await api('/api/photos',{method:'POST',body:x.disp});if(x.thumb)await api('/api/photos/thumb?name='+id,{method:'POST',body:x.thumb});if(x.orig)await api(`/api/photos/original?name=${id}&ext=${extOf(x.orig)}`,{method:'POST',body:x.orig})}catch{bad++}}$('#p-prog').textContent=bad?`${bad} failed`:'Added, originals saved on the Pi';loadPi()};
 
 /* ---- lifecycle ---- */
 const needAuth=()=>{if(!$('#connect').classList.contains('on')){stopAll();$('#c-err').textContent='The Pi rejected the token. Enter it again.';$('#c-base').value=C.base||'';$('#connect').classList.add('on')}};

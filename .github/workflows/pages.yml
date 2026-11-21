@@ -2,23 +2,19 @@ name: Deploy companion app to GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['public/app/**', '.github/workflows/pages.yml', 'tools/make-icons.py']
+    paths: ['public/app/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 permissions: { contents: read, pages: write, id-token: write }
 concurrency: { group: pages, cancel-in-progress: true }
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: pip install pillow && python3 tools/make-icons.py public/app/icons && ls -la public/app public/app/icons
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with: { path: public/app }
   deploy:
-    needs: build
     runs-on: ubuntu-latest
     environment: { name: github-pages, url: '${{ steps.d.outputs.page_url }}' }
     steps:
+      - uses: actions/checkout@v4
+      - run: pip install pillow && python3 tools/make-icons.py public/app/icons
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: public/app }
       - id: d
         uses: actions/deploy-pages@v4

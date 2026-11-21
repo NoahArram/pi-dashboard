@@ -72,3 +72,14 @@ Cross-origin requests are refused unless the origin is allow-listed **and** the 
 **The Pi needs an HTTPS address.** An HTTPS page cannot call `http://192.168.x.x` (mixed content), and a service worker needs a secure context. Pick one:
 - **Tailscale Serve** (private, recommended): install Tailscale on the Pi and phone, then `sudo tailscale serve --bg 8080`. You get `https://<pi>.<tailnet>.ts.net`, reachable only on your tailnet.
 - **Cloudflare Tunnel** (public URL, so set the token): `cloudflared tunnel --url http://localhost:8080` for a quick test, or a named tunnel with your own domain for a permanent address.
+
+Icons are generated, not committed: run `python3 tools/make-icons.py` (needs Pillow) before serving `/app/` from the Pi. The Pages workflow does this itself.
+
+## Photos: originals, 4K copies, shuffle
+
+Uploads (from `/photos.html` or the companion app) keep three files per photo under `~/.pi-dashboard/`:
+- `originals/` the untouched file you picked (any size, up to 1 GB; JPEG, PNG, WebP, HEIC, TIFF, etc.). Tap a photo in the grid to open its original.
+- `photos/` a screen copy, at most 3840px on the long edge at JPEG quality 95, which is what the slideshow shows.
+- `thumbs/` small thumbnails for the upload grid.
+
+Uploads stop if the Pi has less than 2 GB free. The slideshow plays from a shuffled deck: every photo once per round in random order, never the same photo twice in a row, kept across screensaver sessions, and new uploads are slotted in at random.
