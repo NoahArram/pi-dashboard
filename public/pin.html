@@ -1,0 +1,11 @@
+<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>Pin playlists</title>
+<style>body{margin:0;padding:24px;background:#0a0c0f;color:#f2f4f7;font:17px/1.45 system-ui,sans-serif;max-width:640px;margin:auto}h1{font-size:26px}textarea{width:100%;height:150px;border-radius:14px;border:1px solid #242a33;background:#181c23;color:#fff;font:16px system-ui;padding:14px}button{height:52px;padding:0 24px;border-radius:999px;border:0;background:#1ed760;color:#04120a;font:600 17px system-ui;margin-top:12px}.p{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #242a33}.p button{background:#181c23;color:#fff;margin:0;height:40px;font-size:15px}.sub{color:#97a0ad;font-size:15px}</style></head><body>
+<h1>Pin playlists</h1><p class="sub">In the Spotify app, open a playlist, tap the three dots, Share, Copy link. Paste one or several links here. Spotify keeps updating them, so they always play the latest songs.</p>
+<textarea id="t" placeholder="https://open.spotify.com/playlist/..."></textarea><br><button id="go">Pin to my Pi</button> <span id="m" class="sub"></span><div id="l"></div>
+<script>
+const H={'X-Dash':'1','Content-Type':'application/json'};
+async function names(u){try{return (await (await fetch('/api/oembed?uri='+encodeURIComponent(u))).json()).title||u}catch{return u}}
+async function draw(p){const l=document.getElementById('l');l.innerHTML='';for(const u of p){const d=document.createElement('div');d.className='p';const n=document.createElement('span');n.textContent=await names(u);const b=document.createElement('button');b.textContent='Remove';b.onclick=async()=>{draw((await (await fetch('/api/pins',{method:'DELETE',headers:H,body:JSON.stringify({uri:u})})).json()).pins)};d.append(n,b);l.append(d)}}
+document.getElementById('go').onclick=async()=>{const r=await (await fetch('/api/pins',{method:'POST',headers:H,body:JSON.stringify({text:document.getElementById('t').value})})).json();document.getElementById('m').textContent=r.added?'Pinned '+r.added:'No new playlist link found';if(r.added)document.getElementById('t').value='';draw(r.pins||[])};
+fetch('/api/pins').then(r=>r.json()).then(draw);
+</script></body></html>

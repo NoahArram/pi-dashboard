@@ -1,0 +1,16 @@
+{
+  "name": "pi-dashboard",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-ical": "^0.27.6",
+    "ws": "^8.23.0"
+  }
+}

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="dark"><title>Pi · Setup</title>
+<style>
+:root{--bg:#0a0c0f;--panel:#12151a;--panel2:#181c23;--line:#242a33;--text:#f2f4f7;--dim:#97a0ad;--accent:#1ed760;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);padding:20px;max-width:720px;margin:0 auto;line-height:1.45}
+h1{font-size:26px;margin:8px 0 4px}h2{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin:30px 0 10px}
+p,.hint{color:var(--dim);font-size:14px;margin:6px 0 12px}a{color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}
+input,select{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:12px;color:var(--text);padding:13px 14px;font:inherit;margin:6px 0}
+button{font:inherit;background:var(--accent);color:#04120a;border:0;border-radius:12px;padding:12px 18px;font-weight:650;cursor:pointer}
+button.g{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+.row{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}.row:first-child{border-top:0}
+.row .t{flex:1;min-width:0}.dot{width:12px;height:12px;border-radius:50%;flex:none}.small{font-size:13px;color:var(--dim)}
+.res{padding:12px;border-radius:10px;background:var(--panel2);margin:6px 0;cursor:pointer}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}#msg{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#e9ecf1;color:#000;padding:10px 18px;border-radius:999px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none}
+</style></head><body>
+<h1>Dashboard setup</h1><p>Settings for the home page. Changes apply on the dashboard within a minute.</p>
+<p><a href="/photos.html">Add or remove screensaver photos</a></p>
+
+<h2>Location (weather)</h2>
+<div class="card"><div id="loc" class="small"></div>
+<input id="q" placeholder="Search for your town or city" autocomplete="off"><div id="res"></div>
+<p class="hint">Forecasts come from Open-Meteo, which serves Met Office model data (the 2 km UKV model over the UK). Free, no key.</p></div>
+
+<h2>Calendars</h2>
+<div class="card"><div id="cals"></div>
+<input id="cn" placeholder="Name (e.g. Work, Uni, Family)"><input id="cu" placeholder="Calendar link (https://… or webcal://…)" autocapitalize="off" autocorrect="off">
+<div class="two"><select id="cc"><option value="#4da3ff">Blue</option><option value="#b07cff">Purple</option><option value="#ff9f43">Orange</option><option value="#1ed760">Green</option><option value="#ff6b8b">Pink</option><option value="#ffd24d">Yellow</option></select><button id="addcal">Add calendar</button></div>
+<p class="hint"><b>Google:</b> Calendar on the web, Settings, pick the calendar, Integrate calendar, copy <i>Secret address in iCal format</i>. Google refreshes these feeds slowly, so new events can take a few hours to appear.<br><b>Outlook / Microsoft 365:</b> Settings, Calendar, Shared calendars, Publish a calendar, choose it, publish, copy the <i>ICS</i> link. Some work accounts block publishing.<br>Treat these links like passwords: anyone with one can read that calendar.</p></div>
+
+<h2>Todoist</h2>
+<div class="card"><div class="small" id="tds"></div><input id="tk" type="password" placeholder="Todoist API token" autocomplete="off">
+<div class="two"><button id="tsave">Save token</button><button class="g" id="tclear">Remove</button></div>
+<p class="hint">Get it in Todoist: Settings, Integrations, Developer, copy the API token. It stays on the Pi.</p></div>
+
+<h2>Screensaver and idle</h2>
+<div class="card"><div class="two"><div><div class="small">Change photo every (minutes)</div><input id="ph" type="number" min="1" max="120"></div><div><div class="small">Start after idle (minutes)</div><input id="id" type="number" min="1" max="120"></div></div>
+<button id="ssave">Save</button></div>
+
+<h2>Sleep and alarm</h2>
+<div class="card">
+<label class="small"><input id="ae" type="checkbox" style="width:auto;margin-right:8px">Play the alarm after the screen wakes</label>
+<div class="two"><div><div class="small">Alarm this many minutes after wake</div><input id="ad" type="number" min="0" max="120"></div><div><div class="small">Default wake time (if none is sent)</div><input id="dw" type="time"></div></div>
+<div class="small" style="margin-top:8px">Alarm stops by itself after (minutes)</div><input id="ao" type="number" min="0.5" max="60" step="0.5">
+<div class="small" style="margin-top:8px">Alarm volume <span id="avl"></span></div><input id="av" type="range" min="1" max="100">
+<p class="hint">The sound is a slow, soft chime that fades in over about 90 seconds. It plays through the Pi’s audio output, so set the level once with Test.</p>
+<div class="two"><button id="asave">Save</button><button class="g" id="atest">Test alarm now</button></div>
+<div class="two" style="margin-top:10px"><button class="g" id="sl2">Sleep for 2 minutes (test)</button><button class="g" id="wk">Wake now</button></div>
+<div class="small" style="margin-top:14px">API token (optional)</div><input id="at" type="password" placeholder="Leave empty for no token" autocomplete="off"><button class="g" id="atsave">Save token</button><span class="small" id="ats"></span>
+<p class="hint"><b>iOS Shortcut:</b> add a <i>Get Contents of URL</i> action. URL <code id="u1"></code>, method <b>POST</b>, request body <b>JSON</b> with a text field <code>wake</code>. For its value, use <i>Format Date</i> on the wake-up date and choose <b>ISO 8601</b> with the time included. Apple’s docs show this as 2016-06-01T14:41:36-08:00, offset included. Plain <code>07:00</code> also works (next 7am). Add <code>"alarm": false</code> to skip tomorrow’s alarm. <code>/api/wake</code> wakes it early. With a token set, send header <code>Authorization: Bearer &lt;token&gt;</code>.</p></div>
+<h2>Weather model</h2>
+<div class="card"><select id="wm"><option value="ukmo_seamless">Met Office (UKV 2 km over the UK, global elsewhere)</option><option value="">Open-Meteo best match</option></select><button id="wsave" style="margin-top:8px">Save</button></div>
+<div id="msg"></div>
+<script>
+const $=s=>document.querySelector(s);let cfg={};
+const msg=t=>{const m=$('#msg');m.textContent=t;m.style.opacity=1;clearTimeout(msg.t);msg.t=setTimeout(()=>m.style.opacity=0,2200)};
+const put=async b=>{const r=await fetch('/api/config',{method:'PUT',headers:{'X-Dash':'1','Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok){msg(j.error||'Failed');return null}cfg=j;draw();return j};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function draw(){
+  $('#ae').checked=cfg.alarm.enabled;$('#ad').value=cfg.alarm.delayMin;$('#ao').value=cfg.alarm.autoOffMin;$('#dw').value=cfg.defaultWake;$('#av').value=cfg.alarm.volume;$('#avl').textContent=cfg.alarm.volume;$('#ats').textContent=cfg.tokenSet?' A token is set.':'';$('#u1').textContent=location.origin+'/api/sleep';
+  $('#loc').innerHTML=cfg.location?`Current: <b>${esc(cfg.location.name)}</b>`:'No location set';
+  $('#cals').innerHTML=cfg.calendars.length?cfg.calendars.map(c=>`<div class="row"><span class="dot" style="background:${c.color}"></span><div class="t">${esc(c.name)}</div><button class="g" data-rm="${c.id}">Remove</button></div>`).join(''):'<div class="small">No calendars yet.</div>';
+  $('#tds').textContent=cfg.todoist?'A token is saved.':'No token saved.';
+  $('#ph').value=cfg.saver.photoMin;$('#id').value=cfg.saver.idleMin;$('#wm').value=cfg.weatherModel;
+}
+let qt;$('#q').oninput=()=>{clearTimeout(qt);qt=setTimeout(async()=>{const q=$('#q').value.trim();if(q.length<2){$('#res').innerHTML='';return}
+  try{const r=await (await fetch('/api/geocode?q='+encodeURIComponent(q))).json();window._r=r;$('#res').innerHTML=r.length?r.map((x,i)=>`<div class="res" data-i="${i}">${esc(x.name)}<span class="small"> ${esc([x.admin1,x.country].filter(Boolean).join(', '))}</span></div>`).join(''):'<div class="small">No matches</div>'}catch{$('#res').innerHTML='<div class="small">Search failed</div>'}},350)};
+$('#res').onclick=async e=>{const d=e.target.closest('[data-i]');if(!d)return;const x=window._r[+d.dataset.i];if(await put({location:{name:x.name,lat:x.lat,lon:x.lon}})){msg('Location saved');$('#res').innerHTML='';$('#q').value=''}};
+$('#addcal').onclick=async()=>{if(await put({addCalendar:{name:$('#cn').value||'Calendar',url:$('#cu').value,color:$('#cc').value}})){$('#cn').value=$('#cu').value='';msg('Calendar added')}};
+$('#cals').onclick=async e=>{const b=e.target.closest('[data-rm]');if(b&&confirm('Remove this calendar?'))await put({removeCalendar:b.dataset.rm})};
+$('#tsave').onclick=async()=>{if(await put({todoistToken:$('#tk').value})){$('#tk').value='';msg('Token saved')}};
+$('#tclear').onclick=async()=>{if(await put({todoistToken:''}))msg('Token removed')};
+$('#ssave').onclick=async()=>{if(await put({saver:{photoMin:$('#ph').value,idleMin:$('#id').value}}))msg('Saved')};
+$('#wsave').onclick=async()=>{if(await put({weatherModel:$('#wm').value}))msg('Saved')};
+$('#av').oninput=()=>$('#avl').textContent=$('#av').value;
+$('#asave').onclick=async()=>{if(await put({alarm:{enabled:$('#ae').checked,delayMin:$('#ad').value,autoOffMin:$('#ao').value,volume:$('#av').value},defaultWake:$('#dw').value}))msg('Saved')};
+const act=(u,b,t)=>async()=>{const r=await fetch(u,{method:'POST',headers:{'X-Dash':'1','Content-Type':'application/json'},body:JSON.stringify(b||{})});msg(r.ok?t:'Failed')};
+$('#atest').onclick=async()=>{await $('#asave').onclick();act('/api/alarm/test',{},'Alarm should be showing on the Pi')()};
+$('#sl2').onclick=act('/api/sleep',{minutes:2},'Screen sleeps now, wakes in 2 min');
+$('#wk').onclick=act('/api/wake',{},'Waking');
+$('#atsave').onclick=async()=>{if(await put({apiToken:$('#at').value})){$('#at').value='';msg('Token saved')}};
+fetch('/api/config').then(r=>r.json()).then(j=>{cfg=j;draw()});
+</script></body></html>

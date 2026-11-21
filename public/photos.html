@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="dark"><title>Pi · Photos</title>
+<style>
+:root{--bg:#0a0c0f;--panel:#12151a;--panel2:#181c23;--line:#242a33;--text:#f2f4f7;--dim:#97a0ad;--accent:#1ed760;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);padding:20px;max-width:980px;margin:0 auto}
+h1{font-size:26px;margin:8px 0 4px}p{color:var(--dim);font-size:14px}a{color:var(--accent)}
+#drop{border:2px dashed var(--line);border-radius:20px;padding:34px 16px;text-align:center;background:var(--panel);cursor:pointer;margin:16px 0}
+#drop.on{border-color:var(--accent);background:#0f1f16}#drop b{display:block;font-size:18px;margin-bottom:4px}
+#bar{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;margin:10px 0;display:none}#bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.ph{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--panel2)}.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph button{position:absolute;top:6px;right:6px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:18px;cursor:pointer}
+</style></head><body>
+<h1>Screensaver photos</h1><p>Add photos here and they join the slideshow on the Pi. Big photos are shrunk to screen size on your device first, so uploads are quick and the Pi stays light. <a href="/setup.html">Dashboard setup</a></p>
+<label id="drop"><b>Tap to choose photos</b><span class="small">or drop them here</span><input id="f" type="file" accept="image/*" multiple hidden></label>
+<div id="bar"><i></i></div><p id="st"></p><div id="grid"></div>
+<script>
+const $=s=>document.querySelector(s), MAX=2560;
+async function shrink(file){
+  try{
+    const bm=await createImageBitmap(file,{imageOrientation:'from-image'}); const s=Math.min(1,MAX/Math.max(bm.width,bm.height));
+    if(s===1&&file.type==='image/jpeg'&&file.size<6e6){bm.close?.();return file}
+    const c=document.createElement('canvas');c.width=Math.round(bm.width*s);c.height=Math.round(bm.height*s);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);
+    return await new Promise(r=>c.toBlob(r,'image/jpeg',.9));
+  }catch{return file}
+}
+async function load(){const l=await (await fetch('/api/photos')).json();$('#st').textContent=l.length?l.length+' photo'+(l.length>1?'s':'')+' in the slideshow':'No photos yet.';
+  $('#grid').innerHTML=l.map(p=>`<div class="ph"><img loading="lazy" src="/photos/${p.n}"><button data-d="${p.n}" aria-label="Delete">×</button></div>`).join('')}
+async function up(files){
+  files=[...files].filter(f=>f.type.startsWith('image/')||/\.(heic|heif)$/i.test(f.name));let done=0,bad=0;$('#bar').style.display='block';
+  for(const f of files){const b=await shrink(f);const r=await fetch('/api/photos',{method:'POST',headers:{'X-Dash':'1'},body:b});if(!r.ok)bad++;$('#bar i').style.width=(++done/files.length*100)+'%'}
+  $('#bar').style.display='none';$('#bar i').style.width=0;$('#st').textContent=bad?`${bad} file${bad>1?'s':''} couldn’t be added (JPEG, PNG or WebP only)`:'Added';await load()}
+$('#f').onchange=e=>{up(e.target.files);e.target.value=''};
+const d=$('#drop');['dragover','dragenter'].forEach(t=>d.addEventListener(t,e=>{e.preventDefault();d.classList.add('on')}));['dragleave','drop'].forEach(t=>d.addEventListener(t,e=>{e.preventDefault();d.classList.remove('on')}));
+d.addEventListener('drop',e=>up(e.dataTransfer.files));
+$('#grid').onclick=async e=>{const b=e.target.closest('[data-d]');if(!b||!confirm('Remove this photo?'))return;await fetch('/api/photos?name='+b.dataset.d,{method:'DELETE',headers:{'X-Dash':'1'}});load()};
+load();
+</script></body></html>
