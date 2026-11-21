@@ -1256,7 +1256,7 @@ async function showSaver() {
   saver.layers.forEach(l => l.classList.remove('show'));
   await showPhoto(true);
   clearInterval(saver.timer);
-  saver.timer = setInterval(() => showPhoto(false), Math.max(1, H.cfg?.saver?.photoMin || 5) * 60e3);
+  saver.timer = setInterval(() => showPhoto(false), Math.max(5, H.cfg?.saver?.photoSec || 300) * 1e3);
 }
 function hideSaver() { if (!saver.on) return; if (calOff) calGo(0); saver.on = false; clearInterval(saver.timer); $('#saver').classList.remove('on'); }
 $('#saver').addEventListener('pointerdown', e => {
@@ -1271,7 +1271,7 @@ function setAmbient(on) { if (ambient === on) return; ambient = on; document.bod
 const playingHere = () => !!(S.bridge && S.auth?.is_active && S.status === 'playing');
 setInterval(() => {
   if (PW.sleeping || PW.alarmActive) return;
-  const lim = (H.cfg?.saver?.idleMin || 3) * 60e3, here = playingHere();
+  const lim = Math.max(10, H.cfg?.saver?.idleSec || 180) * 1e3, here = playingHere();
   if (saver.on) { if (here) { hideSaver(); setPage(1, false); go('now'); } return; }   // music started on the Pi: show it instead of photos
   if (Date.now() - lastAct < lim) return;
   if (here) { if (!ambient) { if (route.view !== 'video') go('now'); if (PG.page !== 1) setPage(1); setAmbient(true); } }

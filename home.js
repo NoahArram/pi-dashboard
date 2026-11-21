@@ -7,8 +7,10 @@ module.exports = function init({ CFG, json, readJson, writeJson, sameOrigin }) {
   const CONF = path.join(CFG.dataDir, 'config.json');
   const PHOTOS = path.join(CFG.dataDir, 'photos'), ORIG = path.join(CFG.dataDir, 'originals'), THUMB = path.join(CFG.dataDir, 'thumbs');
   fs.mkdirSync(PHOTOS, { recursive: true, mode: 0o755 });
-  const DEF = { location: null, calendars: [], todoistToken: '', saver: { photoMin: 5, idleMin: 3 }, weatherModel: 'ukmo_seamless', alarm: { enabled: true, delayMin: 15, volume: 70, autoOffMin: 2 }, defaultWake: '07:00', apiToken: '', corsOrigins: [] };
+  const DEF = { location: null, calendars: [], todoistToken: '', saver: { photoSec: 300, idleSec: 180 }, weatherModel: 'ukmo_seamless', alarm: { enabled: true, delayMin: 15, volume: 70, autoOffMin: 2 }, defaultWake: '07:00', apiToken: '', corsOrigins: [] };
   let conf = { ...DEF, ...readJson(CONF, {}) }; conf.alarm = { ...DEF.alarm, ...conf.alarm }; conf.saver = { ...DEF.saver, ...conf.saver };
+  if (conf.saver.photoMin) { conf.saver.photoSec = Math.round(conf.saver.photoMin * 60); delete conf.saver.photoMin; } // migrate from minutes
+  if (conf.saver.idleMin) { conf.saver.idleSec = Math.round(conf.saver.idleMin * 60); delete conf.saver.idleMin; }
   const save = () => writeJson(CONF, conf);
   const guard = (req, res) => { if (req.headers['x-dash'] !== '1' || !sameOrigin(req)) { json(res, 403, { error: 'bad origin' }); return false; } return true; };
   const body = async (req, max) => { const ch = []; let n = 0; for await (const c of req) { n += c.length; if (n > max) return null; ch.push(c); } return Buffer.concat(ch); };
@@ -154,7 +156,7 @@ module.exports = function init({ CFG, json, readJson, writeJson, sameOrigin }) {
           conf.calendars.push({ id: Math.random().toString(36).slice(2, 8), name: String(a.name || 'Calendar').slice(0, 40), url: u, color: /^#[0-9a-f]{6}$/i.test(a.color) ? a.color : '#4da3ff' }); clearCal();
         }
         if (x.removeCalendar) { conf.calendars = conf.calendars.filter(c => c.id !== x.removeCalendar); clearCal(); }
-        if (x.saver) { const ph = Math.round(+x.saver.photoMin), id = Math.round(+x.saver.idleMin); if (ph >= 1 && ph <= 120) conf.saver.photoMin = ph; if (id >= 1 && id <= 120) conf.saver.idleMin = id; }
+        if (x.saver) { const ph = Math.round(+x.saver.photoSec), id = Math.round(+x.saver.idleSec); if (ph >= 5 && ph <= 7200) conf.saver.photoSec = ph; if (id >= 10 && id <= 7200) conf.saver.idleSec = id; }
         if (x.alarm) { const a = x.alarm; if (typeof a.enabled === 'boolean') conf.alarm.enabled = a.enabled; const dm = Math.round(+a.delayMin), v = Math.round(+a.volume); if (dm >= 0 && dm <= 120) conf.alarm.delayMin = dm; const ao = +a.autoOffMin; if (ao >= 0.5 && ao <= 60) conf.alarm.autoOffMin = ao; if (v >= 1 && v <= 100) conf.alarm.volume = v; }
         if (typeof x.defaultWake === 'string' && /^([01]?\d|2[0-3]):[0-5]\d$/.test(x.defaultWake)) conf.defaultWake = x.defaultWake;
         if (Array.isArray(x.corsOrigins)) conf.corsOrigins = x.corsOrigins.slice(0, 10).map(o => { try { const u = new URL(String(o).trim()); return /^https?:$/.test(u.protocol) ? u.origin : ''; } catch { return ''; } }).filter(Boolean);

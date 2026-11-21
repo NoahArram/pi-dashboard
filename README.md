@@ -28,7 +28,7 @@ Try it without a Pi: `node tools/mock-soloist.js &` then `DEMO=1 node server.js`
 ## Home dashboard (iteration 2)
 
 - Pages: **Dashboard** (clock, weather, calendar, Todoist) and **Music** side by side. Swipe left on the dashboard for music, swipe right starting on the left rail (or tap Home) to come back.
-- Screensaver: photos fade every 5 minutes (change in Setup). Touch wakes to the dashboard. After 3 idle minutes it goes back to photos, unless music is playing on the Pi, in which case it shows Now Playing with the rail hidden and dimmed.
+- Screensaver: photos fade every 5 minutes by default (set in seconds in Setup). Touch wakes to the dashboard. After 3 idle minutes by default (also in seconds) it goes back to photos, unless music is playing on the Pi, in which case it shows Now Playing with the rail hidden and dimmed.
 - Anti burn-in: the whole UI drifts a few pixels every minute (every 20 s in the music view), the rail and bar hide when idle on music, and the screen dims slightly.
 - Setup from your phone: `http://<pi-ip>:8080/setup.html` (location, calendars, Todoist token, timings) and `/photos.html` (upload photos; they're shrunk on the phone first). Needs `HOST=0.0.0.0` in the env file, which lets anyone on your Wi-Fi control playback.
 - Weather: Open-Meteo serving Met Office models (UKV 2 km over the UK). Free for non-commercial use, no key, attribution shown.
@@ -41,7 +41,7 @@ Try it without a Pi: `node tools/mock-soloist.js &` then `DEMO=1 node server.js`
 - `POST /api/sleep` blanks the screen (black overlay, then real display power off) until the time in the body, then turns it back on. The schedule is saved, so a restart or reboot doesn't lose it.
 - Body (JSON, form or plain text all work): `{"wake": "2026-11-22T07:00:00+00:00"}`. Accepted: ISO 8601 with offset or `Z` (what Shortcuts' Format Date gives when you pick ISO 8601 with time), the same without an offset (read as the Pi's local time), `2026-11-22 07:00`, a date alone (uses the default wake time), a time alone like `07:00` or `7:00 am` (next occurrence), Unix seconds/ms, and Shortcuts' long text dates. Wake times in the past or more than 48 h away are refused. Optional `"alarm": false` skips that morning's alarm. `{"minutes": 2}` is for testing.
 - `POST /api/wake` wakes immediately. `GET /api/power` shows the state.
-- Alarm: 15 minutes after the scheduled wake (change in Setup) a soft chime fades in over ~90 s and a swipe-to-dismiss screen appears. It stops by itself after 2 minutes (Setup) or when you drag the slider across. No snooze, on purpose.
+- Alarm: 15 minutes after the scheduled wake (change in Setup) a soft chime fades in over ~20 s and a swipe-to-dismiss screen appears. It stops by itself after 2 minutes (Setup) or when you drag the slider across. No snooze, on purpose.
 - Display off uses, in order: `DISPLAY_OFF_CMD`/`DISPLAY_ON_CMD` from the env file if you set them, `wlr-randr` (Wayland), `xset dpms` (X11), then the official Pi display backlight. If none works the screen still goes fully black, just with the backlight on. Not tested on real hardware.
 - The Pi's timezone must be right (`timedatectl`) because offset-less times are read as Pi-local.
 - Optional API token in Setup; then send `Authorization: Bearer <token>`.

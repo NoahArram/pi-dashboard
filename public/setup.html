@@ -34,7 +34,7 @@ button.g{background:var(--panel2);color:var(--text);border:1px solid var(--line)
 <p class="hint">Get it in Todoist: Settings, Integrations, Developer, copy the API token. It stays on the Pi.</p></div>
 
 <h2>Screensaver and idle</h2>
-<div class="card"><div class="two"><div><div class="small">Change photo every (minutes)</div><input id="ph" type="number" min="1" max="120"></div><div><div class="small">Start after idle (minutes)</div><input id="id" type="number" min="1" max="120"></div></div>
+<div class="card"><div class="two"><div><div class="small">Change photo every (seconds)</div><input id="ph" type="number" min="5" max="7200" step="1"></div><div><div class="small">Start after idle (seconds)</div><input id="id" type="number" min="10" max="7200" step="1"></div></div>
 <button id="ssave">Save</button></div>
 
 <h2>Sleep and alarm</h2>
@@ -62,7 +62,7 @@ function draw(){
   $('#loc').innerHTML=cfg.location?`Current: <b>${esc(cfg.location.name)}</b>`:'No location set';
   $('#cals').innerHTML=cfg.calendars.length?cfg.calendars.map(c=>`<div class="row"><span class="dot" style="background:${c.color}"></span><div class="t">${esc(c.name)}</div><button class="g" data-rm="${c.id}">Remove</button></div>`).join(''):'<div class="small">No calendars yet.</div>';
   $('#tds').textContent=cfg.todoist?'A token is saved.':'No token saved.';
-  $('#ph').value=cfg.saver.photoMin;$('#id').value=cfg.saver.idleMin;$('#wm').value=cfg.weatherModel;
+  $('#ph').value=cfg.saver.photoSec;$('#id').value=cfg.saver.idleSec;$('#wm').value=cfg.weatherModel;
 }
 let qt;$('#q').oninput=()=>{clearTimeout(qt);qt=setTimeout(async()=>{const q=$('#q').value.trim();if(q.length<2){$('#res').innerHTML='';return}
   try{const r=await (await fetch('/api/geocode?q='+encodeURIComponent(q))).json();window._r=r;$('#res').innerHTML=r.length?r.map((x,i)=>`<div class="res" data-i="${i}">${esc(x.name)}<span class="small"> ${esc([x.admin1,x.country].filter(Boolean).join(', '))}</span></div>`).join(''):'<div class="small">No matches</div>'}catch{$('#res').innerHTML='<div class="small">Search failed</div>'}},350)};
@@ -71,7 +71,7 @@ $('#addcal').onclick=async()=>{if(await put({addCalendar:{name:$('#cn').value||'
 $('#cals').onclick=async e=>{const b=e.target.closest('[data-rm]');if(b&&confirm('Remove this calendar?'))await put({removeCalendar:b.dataset.rm})};
 $('#tsave').onclick=async()=>{if(await put({todoistToken:$('#tk').value})){$('#tk').value='';msg('Token saved')}};
 $('#tclear').onclick=async()=>{if(await put({todoistToken:''}))msg('Token removed')};
-$('#ssave').onclick=async()=>{if(await put({saver:{photoMin:$('#ph').value,idleMin:$('#id').value}}))msg('Saved')};
+$('#ssave').onclick=async()=>{if(await put({saver:{photoSec:$('#ph').value,idleSec:$('#id').value}}))msg('Saved')};
 $('#wsave').onclick=async()=>{if(await put({weatherModel:$('#wm').value}))msg('Saved')};
 $('#av').oninput=()=>$('#avl').textContent=$('#av').value;
 $('#asave').onclick=async()=>{if(await put({alarm:{enabled:$('#ae').checked,delayMin:$('#ad').value,autoOffMin:$('#ao').value,volume:$('#av').value},defaultWake:$('#dw').value}))msg('Saved')};
