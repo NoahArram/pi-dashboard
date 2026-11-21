@@ -147,7 +147,6 @@ h2{font-size:19px;margin:28px 0 12px;color:var(--text)}
 .fsearch input{flex:1;background:none;border:0;outline:0;font-size:18px;min-width:0;user-select:text;-webkit-user-select:text}
 .fsearch .sub{font-size:14px}
 .row.played .t{color:var(--dim)}
-#v-settings h1{margin-top:4px}
 @media (max-height:700px){.nav{width:64px;height:60px;font-size:11px;gap:3px}.nav svg{font-size:24px}#chip{padding:4px}}
 @media (max-width:900px){
   :root{--rail:76px}
@@ -252,6 +251,19 @@ h2{font-size:19px;margin:28px 0 12px;color:var(--text)}
 #dots button{width:34px;height:30px;display:grid;place-items:center}
 #dots i{width:8px;height:8px;border-radius:50%;background:var(--faint);transition:all .2s}
 #dots button[aria-current=true] i{background:var(--text);width:22px;border-radius:4px}
+#sscr{position:fixed;inset:0;z-index:60;background:radial-gradient(1400px 800px at 12% -10%,#16202e 0%,var(--bg) 62%);display:none;flex-direction:column}
+#sscr.on{display:flex}
+#sscr .sbar{display:flex;align-items:center;gap:16px;padding:16px clamp(18px,3vw,36px);border-bottom:1px solid var(--line);flex:none}
+#sscr .sbar h1{margin:0;flex:1;font-size:26px}
+#sscr .sbody{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;padding:4px clamp(18px,3vw,36px) 36px;-webkit-overflow-scrolling:touch}
+.btn.danger{color:#ff8a8a;border-color:rgba(255,93,93,.5)}
+.srow{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:14px 0;border-top:1px solid var(--line)}.srow:first-of-type{border-top:0}
+.srow .lbl{flex:1 1 220px;font-weight:600;font-size:18px;color:var(--text)}.srow .lbl small{display:block;color:var(--dim);font-weight:400;font-size:14px;margin-top:3px}
+.stp{display:inline-flex;align-items:center;gap:4px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:4px}
+.stp button{width:52px;height:52px;border-radius:50%;font-size:28px;display:grid;place-items:center;color:var(--text);background:none}
+.stp button:active{background:rgba(255,255,255,.08)}
+.stp b{color:var(--text);min-width:58px;text-align:center;font-size:26px;font-weight:600;font-variant-numeric:tabular-nums}
+.stp+span{color:var(--dim);font-size:15px;margin:0 6px 0 -6px}
 #hgear{position:absolute;right:14px;bottom:2px;width:44px;height:36px;display:grid;place-items:center;color:var(--faint);font-size:22px;z-index:5}
 #dim{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity 2s;z-index:50}
 body.ambient #dim{opacity:.3}
@@ -308,8 +320,6 @@ body.ambient #rail,body.ambient #mini{opacity:0}
     <button class="nav" data-go="podcasts"><svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3m5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11z"/></svg>Podcasts</button>
     <button class="nav" data-go="video"><svg viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11z"/></svg>Video</button>
     <div class="grow"></div>
- <button class="nav" data-go="settings"><svg viewBox="0 0 24 24"><path d="M3 17v2h6v-2zM3 5v2h10V5zm10 16v-2h8v-2h-8v-2h-2v6zM7 9v2H3v2h4v2h2V9zm14 4v-2H11v2zm-6-4h2V7h4V5h-4V3h-2z"/></svg>Settings</button>
-    <button class="nav" id="b-exit" style="display:none"><svg viewBox="0 0 24 24"><path d="M10.09 15.59 11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67zM19 3H5a2 2 0 0 0-2 2v4h2V5h14v14H5v-4H3v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2"/></svg><span>Exit</span></button>
     <div id="chip"><i></i><span>Connecting</span></div>
   </nav>
 
@@ -352,7 +362,6 @@ body.ambient #rail,body.ambient #mini{opacity:0}
 
     <section class="view" id="v-podcasts"><div id="pod"></div></section>
 
-    <section class="view" id="v-settings"><div id="set"></div></section>
 
     <section class="view" id="v-video">
       <div id="vbox"><div id="ytp"></div><div id="vmsg"></div></div>
@@ -367,6 +376,7 @@ body.ambient #rail,body.ambient #mini{opacity:0}
 </div>
 </div></div>
 <div id="dots"><button data-pg="0" aria-label="Dashboard" aria-current="true"><i></i></button><button data-pg="1" aria-label="Music"><i></i></button></div></div>
+<div id="sscr" aria-label="Settings"><div class="sbar"><button class="btn" id="s-back"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z"/></svg>Back</button><h1>Settings</h1><button class="btn danger" id="b-exit" style="display:none"><svg viewBox="0 0 24 24"><path d="M10.09 15.59 11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67zM19 3H5a2 2 0 0 0-2 2v4h2V5h14v14H5v-4H3v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2"/></svg><span>Exit</span></button></div><div class="sbody"><div id="set"></div></div></div>
 <div id="saver"><div id="snone"></div><div id="sclock" class="bl"></div></div><div id="dim"></div>
 <div id="veil"></div>
 <div id="alarm"><div class="am"><div id="al-time"></div><div id="al-date"></div><div id="al-line"></div><div id="al-slide"><span>Swipe to get up</span><div id="al-knob"><svg viewBox="0 0 24 24"><path d="M8.6 16.6 13.2 12 8.6 7.4 10 6l6 6-6 6z"/></svg></div></div></div></div>
@@ -600,7 +610,7 @@ async function handBack() {
     const r = await fetch('/api/handback', { method: 'POST', headers: { 'X-Dash': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ play: S.status === 'playing' }) });
     const j = await r.json().catch(() => ({}));
     if (r.ok) { toast('Playback sent to ' + (j.name || 'your other device')); if (j.demo) cmd('deactivate'); }
-    else toast(j.error === 'no_other_device' ? 'No other device found. Open Spotify on your phone first' : j.error === 'not_logged_in' ? 'Log in to Spotify in Settings first' : 'Could not hand back playback');
+    else toast(j.error === 'no_other_device' ? 'No other device found. Open Spotify on your phone first' : j.error === 'not_logged_in' ? 'Log in to Spotify first (Settings, from the home screen)' : 'Could not hand back playback');
   } catch { toast('Could not hand back playback'); }
 }
 $('#chip').onclick = () => { if (idle()) jumpHere(); else if (S.bridge && S.auth?.logged_in && S.auth.is_active) handBack(); };
@@ -742,7 +752,6 @@ function go(view) {
   hideOsk();
   if (view === 'library' && !route.stack.length) showLibrary();
   if (view === 'podcasts' && !route.stack.length) showPodcasts();
-  if (view === 'settings') showSettings();
   if (view === 'search') setTimeout(() => !$('#q').value && $('#q').focus({ preventScroll: true }), 50);
   if (view === 'video') startVideo(); else pauseVideoView();
   render();
@@ -857,18 +866,38 @@ async function showPodcasts() {
   } catch (e) { body.innerHTML = e.code === 401 ? needLogin() : `<div class="note">Couldn't load podcasts (${esc(e.message)}).${e.code === 403 ? ' Tap <a href="/auth/login" style="color:var(--accent)">Reconnect Spotify</a> to grant the new permissions.' : ''}</div>`; }
 }
 
+/* ---- screensaver timing: minutes + seconds steppers (no keyboard needed on the wall screen) ---- */
+const SV = { photo: { k: 'photoSec', min: 5, def: 300 }, idle: { k: 'idleSec', min: 10, def: 180 } };
+const svTotal = n => Math.max(SV[n].min, Math.round(H.cfg?.saver?.[SV[n].k] || SV[n].def));
+function saverRow(n, label, hint) {
+  const t = svTotal(n), mm = Math.floor(t / 60), ss = t % 60, b = (u, d, ch) => `<button data-sv="${n}" data-u="${u}" data-d="${d}" aria-label="${d > 0 ? 'More' : 'Less'} ${u === 'm' ? 'minutes' : 'seconds'}">${ch}</button>`;
+  return `<div class="srow" id="sv-${n}"><div class="lbl">${label}<small>${hint}</small></div><div class="stp">${b('m', -1, '−')}<b data-m>${mm}</b>${b('m', 1, '+')}</div><span>min</span><div class="stp">${b('s', -1, '−')}<b data-s>${String(ss).padStart(2, '0')}</b>${b('s', 1, '+')}</div><span>sec</span></div>`;
+}
+let svSaveT = 0;
+$('#set').addEventListener('click', e => {
+  const b = e.target.closest('[data-sv]'); if (!b) return;
+  const n = b.dataset.sv, step = b.dataset.u === 'm' ? 60 : 5, t = Math.min(7200, Math.max(SV[n].min, svTotal(n) + step * +b.dataset.d));
+  H.cfg = { ...H.cfg, saver: { ...H.cfg?.saver, [SV[n].k]: t } };
+  const row = $('#sv-' + n); $('[data-m]', row).textContent = Math.floor(t / 60); $('[data-s]', row).textContent = String(t % 60).padStart(2, '0');
+  clearTimeout(svSaveT); svSaveT = setTimeout(async () => {
+    try { const r = await jsend('/api/config', 'PUT', { saver: { photoSec: svTotal('photo'), idleSec: svTotal('idle') } }); if (!r.ok) throw 0; toast('Saved'); } catch { toast('Couldn’t save'); }
+  }, 700);
+});
+
 /* ============ settings ============ */
 async function showSettings() {
   hideOsk();
   const el = $('#set'); await Promise.all([loadPins(), loadStatus()]);
   const metas = await Promise.all(pins.map(oembed));
-  el.innerHTML = `<h1>Settings</h1>
+  await loadCfg();
+  el.innerHTML = `<h2 style="margin-top:14px">Screensaver</h2>
+    <div class="note" style="max-width:760px;padding:4px 18px">${saverRow('photo', 'Change photo every', 'How long each photo stays up')}${saverRow('idle', 'Start after being idle for', 'Touch the screen to wake it')}</div>
     <h2>Pinned playlists</h2>
     <p class="sub" style="max-width:760px;margin:0 0 12px">For playlists Spotify won't list, like its mood mixes. Paste one or more playlist links (Spotify app: playlist, three dots, Share, Copy link). They always play the latest songs. On a phone, <b>/pin.html</b> on this device's address is easier.</p>
     <div class="fsearch" style="max-width:760px;height:auto;border-radius:18px;padding:12px 12px 12px 18px;align-items:flex-start"><textarea id="pintext" rows="3" placeholder="https://open.spotify.com/playlist/…" style="flex:1;background:none;border:0;outline:0;color:inherit;font:inherit;font-size:17px;resize:none;user-select:text;-webkit-user-select:text"></textarea><button class="btn pri" id="pinsave" style="height:48px">Pin</button></div>
     <div style="max-width:760px;margin-top:14px">${pins.length ? pins.map((u, i) => `<div class="row" style="cursor:default"><div class="art" ${artStyle(metas[i]?.thumbnail_url, u)}></div><div class="txt"><div class="t">${esc(metas[i]?.title || u)}</div><div class="a">Pinned</div></div><button class="btn" data-unpin="${esc(u)}" style="height:44px">Remove</button></div>`).join('') : '<div class="empty" style="padding:24px 0;text-align:left">Nothing pinned yet</div>'}</div>
     <h2>Home dashboard</h2>
-    <div class="note" style="max-width:760px">${(() => { const ip = web.lan?.[0], base = ip ? `http://${ip}:${web.port}` : '', loop = ['127.0.0.1', 'localhost', '::1'].includes(web.bound); return `Calendars, Todoist, weather location, screensaver timing and photos are set up from your phone:<br><b>${base ? base + '/setup.html' : 'no network address found'}</b><br><b>${base ? base + '/photos.html' : ''}</b>${loop ? '<br><br>The dashboard is only listening on this screen right now. To reach it from your phone, set <code>HOST=0.0.0.0</code> in <code>~/.config/pi-dashboard/env</code> and restart it. That also lets anyone on your Wi-Fi control playback.' : ''}`; })()}</div>
+    <div class="note" style="max-width:760px">${(() => { const ip = web.lan?.[0], base = ip ? `http://${ip}:${web.port}` : '', loop = ['127.0.0.1', 'localhost', '::1'].includes(web.bound); return `Calendars, Todoist, weather location and photos are set up from your phone:<br><b>${base ? base + '/setup.html' : 'no network address found'}</b><br><b>${base ? base + '/photos.html' : ''}</b>${loop ? '<br><br>The dashboard is only listening on this screen right now. To reach it from your phone, set <code>HOST=0.0.0.0</code> in <code>~/.config/pi-dashboard/env</code> and restart it. That also lets anyone on your Wi-Fi control playback.' : ''}`; })()}</div>
     <h2>Spotify account</h2>
     <div class="note" style="max-width:760px">Browsing: <b>${web.loggedIn ? 'connected' : 'not connected'}</b><br>Speaker: <b>${esc(S.auth?.device_name || 'Pi')}</b> (${S.bridge ? (S.auth?.logged_in ? 'paired' : 'not paired yet') : 'Soloist offline'})
       <div class="actions"><a class="btn" href="/auth/login" style="text-decoration:none">${web.loggedIn ? 'Reconnect' : 'Sign in'}</a>${web.loggedIn ? '<button class="btn" id="signout">Sign out</button>' : ''}</div></div>`;
@@ -1000,7 +1029,9 @@ function setPage(n, anim = true) {
 }
 $('#dots').addEventListener('click', e => { const b = e.target.closest('[data-pg]'); if (b) setPage(+b.dataset.pg); });
 $('#b-home').onclick = () => setPage(0);
-$('#hgear').onclick = () => { setPage(1); go('settings'); };
+function openSettings() { $('#sscr').classList.add('on'); showSettings(); }
+function closeSettings() { $('#sscr').classList.remove('on'); hideOsk(); }
+$('#hgear').onclick = openSettings; $('#s-back').onclick = closeSettings;
 // swipe between pages: anywhere on the dashboard, or from the left rail on the Spotify page
 (function pagerSwipe() {
   const pg = $('#pager'); let id = null, sx = 0, sy = 0, dx = 0, mode = 0, W = 1, t0 = 0;
@@ -1247,7 +1278,7 @@ async function showPhoto(first) {
   const corners = ['bl', 'tr', 'br', 'tl']; $('#sclock').className = corners[saver.corner++ % 4];
 }
 async function showSaver() {
-  if (saver.on) return;
+  if (saver.on) return; closeSettings();
   saver.on = true; setAmbient(false);
   await refreshDeck(); saver.list = [...deckKnown];
   saver.i = 0; $('#saver').classList.add('on'); updSaverClock();
@@ -1274,7 +1305,7 @@ setInterval(() => {
   const lim = Math.max(10, H.cfg?.saver?.idleSec || 180) * 1e3, here = playingHere();
   if (saver.on) { if (here) { hideSaver(); setPage(1, false); go('now'); } return; }   // music started on the Pi: show it instead of photos
   if (Date.now() - lastAct < lim) return;
-  if (here) { if (!ambient) { if (route.view !== 'video') go('now'); if (PG.page !== 1) setPage(1); setAmbient(true); } }
+  if (here) { if (!ambient) { closeSettings(); if (route.view !== 'video') go('now'); if (PG.page !== 1) setPage(1); setAmbient(true); } }
   else showSaver();
 }, 3000);
 // pixel shift: nudge the whole UI a few px every minute (every 20s when in ambient music mode) so no edge stays on the same pixels
