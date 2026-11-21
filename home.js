@@ -1,18 +1,18 @@
 'use strict';
 // Home-page back end: config store, photos, weather (Open-Meteo / Met Office models), calendars (ICS), Todoist.
 const fs = require('fs'), path = require('path');
-const ical = require('node-ical');
+let ical = null; try { ical = require('node-ical'); } catch { console.error('node-ical is not installed: calendars are disabled until you run npm install in the dashboard folder'); }
 
 module.exports = function init({ CFG, json, readJson, writeJson, sameOrigin }) {
   const CONF = path.join(CFG.dataDir, 'config.json');
   const PHOTOS = path.join(CFG.dataDir, 'photos');
   fs.mkdirSync(PHOTOS, { recursive: true, mode: 0o755 });
-  const DEF = { location: null, calendars: [], todoistToken: '', saver: { photoMin: 5, idleMin: 3 }, weatherModel: 'ukmo_seamless', alarm: { enabled: true, delayMin: 15, volume: 30, autoOffMin: 2 }, defaultWake: '07:00', apiToken: '' };
+  const DEF = { location: null, calendars: [], todoistToken: '', saver: { photoMin: 5, idleMin: 3 }, weatherModel: 'ukmo_seamless', alarm: { enabled: true, delayMin: 15, volume: 30, autoOffMin: 2 }, defaultWake: '07:00', apiToken: '', corsOrigins: [] };
   let conf = { ...DEF, ...readJson(CONF, {}) }; conf.alarm = { ...DEF.alarm, ...conf.alarm }; conf.saver = { ...DEF.saver, ...conf.saver };
   const save = () => writeJson(CONF, conf);
   const guard = (req, res) => { if (req.headers['x-dash'] !== '1' || !sameOrigin(req)) { json(res, 403, { error: 'bad origin' }); return false; } return true; };
   const body = async (req, max) => { const ch = []; let n = 0; for await (const c of req) { n += c.length; if (n > max) return null; ch.push(c); } return Buffer.concat(ch); };
-  const pub = () => ({ location: conf.location, calendars: conf.calendars.map(({ id, name, color }) => ({ id, name, color })), todoist: !!conf.todoistToken || CFG.demo, saver: conf.saver, weatherModel: conf.weatherModel, alarm: conf.alarm, defaultWake: conf.defaultWake, tokenSet: !!conf.apiToken });
+  const pub = () => ({ location: conf.location, calendars: conf.calendars.map(({ id, name, color }) => ({ id, name, color })), todoist: !!conf.todoistToken || CFG.demo, saver: conf.saver, weatherModel: conf.weatherModel, alarm: conf.alarm, defaultWake: conf.defaultWake, tokenSet: !!conf.apiToken, corsOrigins: conf.corsOrigins });
   const cache = new Map(); // key -> { at, v }
   const cached = async (key, ttl, fn) => { const c = cache.get(key); if (c && Date.now() - c.at < ttl) return c.v; const v = await fn(); cache.set(key, { at: Date.now(), v }); return v; };
   const get = async (url, opt = {}) => { const r = await fetch(url, { ...opt, signal: AbortSignal.timeout(12000), headers: { 'User-Agent': 'pi-dashboard', ...(opt.headers || {}) } }); return r; };
@@ -58,6 +58,7 @@ module.exports = function init({ CFG, json, readJson, writeJson, sameOrigin }) {
   /* ---------- calendars (ICS feeds: Google "secret address in iCal format", Outlook "publish calendar") ---------- */
   const txt = v => (v && typeof v === 'object' ? v.val : v) || '';
   async function loadCal(c, from, to) {
+    if (!ical) throw new Error('run npm install on the Pi');
     const r = await get(c.url.replace(/^webcal:/i, 'https:')); if (!r.ok) throw new Error('HTTP ' + r.status);
     const raw = await r.text(); if (raw.length > 8e6) throw new Error('feed too large');
     const data = await ical.async.parseICS(raw), out = [];
@@ -140,6 +141,7 @@ module.exports = function init({ CFG, json, readJson, writeJson, sameOrigin }) {
         if (x.saver) { const ph = Math.round(+x.saver.photoMin), id = Math.round(+x.saver.idleMin); if (ph >= 1 && ph <= 120) conf.saver.photoMin = ph; if (id >= 1 && id <= 120) conf.saver.idleMin = id; }
         if (x.alarm) { const a = x.alarm; if (typeof a.enabled === 'boolean') conf.alarm.enabled = a.enabled; const dm = Math.round(+a.delayMin), v = Math.round(+a.volume); if (dm >= 0 && dm <= 120) conf.alarm.delayMin = dm; const ao = +a.autoOffMin; if (ao >= 0.5 && ao <= 60) conf.alarm.autoOffMin = ao; if (v >= 1 && v <= 100) conf.alarm.volume = v; }
         if (typeof x.defaultWake === 'string' && /^([01]?\d|2[0-3]):[0-5]\d$/.test(x.defaultWake)) conf.defaultWake = x.defaultWake;
+        if (Array.isArray(x.corsOrigins)) conf.corsOrigins = x.corsOrigins.slice(0, 10).map(o => { try { const u = new URL(String(o).trim()); return /^https?:$/.test(u.protocol) ? u.origin : ''; } catch { return ''; } }).filter(Boolean);
         if (typeof x.apiToken === 'string') conf.apiToken = x.apiToken.trim().slice(0, 100);
         if (typeof x.weatherModel === 'string' && /^[a-z0-9_]{0,40}$/.test(x.weatherModel)) { conf.weatherModel = x.weatherModel; cache.clear(); }
         if (x.location !== undefined) cache.clear();

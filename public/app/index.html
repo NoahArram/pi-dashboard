@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en-GB"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0c0f"><meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Pi">
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Pi</title>
+<style>
+:root{--bg:#0a0c0f;--panel:#12151a;--panel2:#181c23;--line:#242a33;--text:#f2f4f7;--dim:#97a0ad;--faint:#5d6674;--accent:#1ed760;--bad:#ff6b6b;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overscroll-behavior:none}
+button,input,select{font:inherit;color:inherit}button{background:none;border:0;cursor:pointer;padding:0}
+svg{width:1em;height:1em;fill:currentColor;display:block}
+#app{height:100%;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+main{flex:1;overflow-y:auto;padding:14px 14px 20px;-webkit-overflow-scrolling:touch}
+.tab{display:none}.tab.on{display:block}
+nav{display:flex;border-top:1px solid var(--line);background:var(--panel);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;padding:10px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--faint)}
+nav button svg{font-size:24px}nav button.on{color:var(--text)}nav button.on svg{color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px}
+h2{margin:0 0 10px;font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim)}
+.big{font-size:54px;font-weight:300;letter-spacing:-.03em;line-height:1}.dim{color:var(--dim)}.small{font-size:13px}
+.row{display:flex;align-items:center;gap:12px}.grow{flex:1;min-width:0}
+.ev{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line)}.ev:first-of-type{border-top:0}
+.ev .tm{width:54px;flex:none;color:var(--dim);font-size:14px;font-variant-numeric:tabular-nums}.ev .bar{width:4px;border-radius:2px;flex:none}
+.ev .tt{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dl{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:12px 0 2px}.dl:first-child{margin-top:0}
+.td{display:flex;align-items:center;gap:12px;padding:6px 0;transition:opacity .3s,transform .3s}
+.td.done{opacity:0;transform:translateX(24px)}
+.chk{width:34px;height:34px;border-radius:50%;border:2.5px solid var(--faint);flex:none;display:grid;place-items:center;color:transparent}
+.chk.p4{border-color:#ff5d5d}.chk.p3{border-color:#ffa13d}.chk.p2{border-color:#4da3ff}.td.done .chk{background:var(--accent);border-color:var(--accent);color:#04120a}
+.chk svg{font-size:20px}.od{color:#ff7a7a;font-size:12px}
+.btn{background:var(--accent);color:#04120a;font-weight:650;border-radius:14px;padding:13px 18px;text-align:center;display:block;width:100%;text-decoration:none}
+.btn.g{background:var(--panel2);color:var(--text);border:1px solid var(--line)}.btn+.btn{margin-top:10px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input[type=text],input[type=password],input[type=time],input[type=url]{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin:6px 0}
+#art{width:100%;aspect-ratio:1;border-radius:16px;background:var(--panel2) center/cover;margin-bottom:14px}
+#mt{font-size:22px;font-weight:700;line-height:1.2}#ma{color:var(--dim);margin-top:4px}
+#bar{height:34px;display:flex;align-items:center;margin-top:12px;touch-action:none}#bar div{height:5px;background:var(--panel2);border-radius:3px;flex:1;overflow:hidden}#bar i{display:block;height:100%;width:100%;background:var(--text);transform-origin:0 50%;transform:scaleX(0)}
+.times{display:flex;justify-content:space-between;font-size:12px;color:var(--dim)}
+.ctl{display:flex;justify-content:space-between;align-items:center;margin-top:8px}.ctl button{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font-size:30px}
+.ctl .play{width:72px;height:72px;background:var(--text);color:#000;font-size:38px}.ctl .sm{font-size:24px;color:var(--dim)}.ctl .on{color:var(--accent)}
+.q{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.q:first-of-type{border-top:0}.q .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill{display:inline-flex;gap:6px;align-items:center;font-size:12px;color:var(--dim)}.pill i{width:8px;height:8px;border-radius:50%;background:var(--faint)}.pill.ok i{background:var(--accent)}.pill.bad i{background:var(--bad)}
+#toast{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#e9ecf1;color:#000;padding:10px 18px;border-radius:999px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9;max-width:90vw;text-align:center}
+#connect{position:fixed;inset:0;background:var(--bg);z-index:20;display:none;padding:calc(30px + env(safe-area-inset-top)) 20px 30px;overflow:auto}#connect.on{display:block}
+#connect h1{margin:0 0 6px}.hint{color:var(--dim);font-size:13px;line-height:1.5}
+</style></head><body>
+<div id="app">
+<main>
+  <section class="tab on" id="t-home">
+    <div class="card"><div class="row"><div class="grow"><div class="big" id="h-temp">–°</div><div id="h-desc" class="dim" style="margin-top:6px"></div></div><div id="h-ico" style="font-size:56px"></div></div><div class="small dim" id="h-sub" style="margin-top:8px"></div></div>
+    <div class="card"><h2>Calendar</h2><div id="h-cal" class="dim small">Loading…</div></div>
+    <div class="card"><h2>To do</h2><div id="h-td" class="dim small">Loading…</div></div>
+  </section>
+  <section class="tab" id="t-music">
+    <div class="card"><div id="art"></div><div id="mt">Nothing playing</div><div id="ma"></div>
+      <div id="bar"><div><i id="mfill"></i></div></div><div class="times"><span id="mcur">0:00</span><span id="mdur">0:00</span></div>
+      <div class="ctl"><button class="sm" id="c-sh" aria-label="Shuffle"><svg viewBox="0 0 24 24"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04z"/></svg></button><button id="c-pv" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button><button class="play" id="c-pl" aria-label="Play or pause"></button><button id="c-nx" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6zM16 6v12h2V6z"/></svg></button><button class="sm" id="c-rp" aria-label="Repeat"></button></div>
+    </div>
+    <div class="card"><div class="row"><span class="pill" id="m-dev"><i></i><span></span></span><div class="grow"></div></div><div class="two" style="margin-top:10px"><button class="btn g" id="m-here">Play on the Pi</button><button class="btn g" id="m-back">Send back to phone</button></div></div>
+    <div class="card"><h2>Up next</h2><div id="m-q" class="dim small">Nothing queued</div></div>
+  </section>
+  <section class="tab" id="t-pi">
+    <div class="card"><h2>Screen</h2><div id="p-state" class="dim" style="margin-bottom:10px">…</div>
+      <div class="small dim">Wake at</div><input type="time" id="p-time" value="07:00">
+      <label class="small dim row" style="margin:6px 0 12px"><input type="checkbox" id="p-alarm" checked style="width:20px;height:20px"> Play the alarm after waking</label>
+      <button class="btn" id="p-sleep">Sleep the screen</button><div class="two" style="margin-top:10px"><button class="btn g" id="p-wake" style="margin:0">Wake now</button><button class="btn g" id="p-test" style="margin:0">Test alarm</button></div></div>
+    <div class="card"><h2>Photos</h2><div class="small dim" id="p-photos" style="margin-bottom:10px"></div><label class="btn" style="cursor:pointer">Add photos<input id="p-up" type="file" accept="image/*" multiple hidden></label><div id="p-prog" class="small dim" style="margin-top:8px"></div></div>
+    <div class="card"><h2>More</h2><a class="btn g" id="p-setup" target="_blank">Dashboard setup</a><a class="btn g" id="p-full" target="_blank">Open the full player</a><button class="btn g" id="p-disc">Change Pi address</button></div>
+    <p class="hint" style="text-align:center">On iPhone: Share, then Add to Home Screen.</p>
+  </section>
+</main>
+<nav><button data-t="home" class="on"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>Home</button><button data-t="music"><svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3z"/></svg>Music</button><button data-t="pi"><svg viewBox="0 0 24 24"><path d="M4 6h16v10H4zm-2 12h20v2H2z"/></svg>Pi</button></nav>
+</div>
+<div id="connect"><h1>Connect to your Pi</h1><p class="hint">Enter the address your Pi's dashboard is served on. If this app was opened from the Pi itself, it connects on its own.</p>
+<input type="url" id="c-base" placeholder="https://frame.your-tailnet.ts.net" autocapitalize="off" autocorrect="off"><input type="password" id="c-token" placeholder="API token (set in Dashboard setup)" autocomplete="off">
+<button class="btn" id="c-go" style="margin-top:10px">Connect</button><p class="hint" id="c-err" style="color:var(--bad)"></p>
+<p class="hint">Away from home the Pi needs an HTTPS address, for example through Tailscale Serve or a Cloudflare Tunnel. See the dashboard README. Your address and token are kept on this device only.</p></div>
+<div id="toast"></div>
+<script>
+'use strict';
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const toast=m=>{const t=$('#toast');t.textContent=m;t.style.opacity=1;clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.opacity=0,2400)};
+const store={get:()=>{try{return JSON.parse(localStorage.getItem('pi-conn')||'{}')}catch{return{}}},set:o=>localStorage.setItem('pi-conn',JSON.stringify(o))};
+let C=store.get(); // {base, token}
+const pad=n=>String(n).padStart(2,'0'), hhmm=d=>pad(d.getHours())+':'+pad(d.getMinutes());
+const fmtT=ms=>{ms=Math.max(0,ms|0);const s=Math.round(ms/1000);return Math.floor(s/60)+':'+pad(s%60)};
+
+/* ---- api ---- */
+async function api(path,opt={}){
+  const h={'X-Dash':'1',...(C.token?{Authorization:'Bearer '+C.token}:{}),...(opt.json?{'Content-Type':'application/json'}:{}),...(opt.headers||{})};
+  const r=await fetch((C.base||'')+path,{method:opt.method||'GET',headers:h,body:opt.json?JSON.stringify(opt.json):opt.body});
+  if(r.status===401||r.status===403){const e=new Error('auth');e.auth=true;throw e}
+  if(!r.ok)throw new Error(r.status);
+  return r.json().catch(()=>({}));
+}
+async function connect(base,token,silent){
+  base=(base||'').trim().replace(/\/+$/,''); const t=(token||'').trim();
+  try{
+    const r=await fetch(base+'/api/power',{headers:t?{Authorization:'Bearer '+t}:{}});
+    if(!r.ok)throw new Error(r.status===401||r.status===403?'The Pi rejected the token or this app’s address isn’t allowed. Add this app’s address under “Allowed app addresses” in Dashboard setup, and check the token.':'The Pi answered with '+r.status);
+    C={base,token:t};store.set(C);$('#connect').classList.remove('on');start();return true;
+  }catch(e){if(!silent)$('#c-err').textContent=e.message==='Failed to fetch'?'Couldn’t reach it. Check the address, that you’re on the right network or VPN, and that it uses https if this app is on https.':e.message;return false}
+}
+$('#c-go').onclick=()=>connect($('#c-base').value,$('#c-token').value);
+$('#p-disc').onclick=()=>{stopAll();$('#c-base').value=C.base||'';$('#c-token').value='';$('#connect').classList.add('on')};
+
+/* ---- tabs ---- */
+function tab(n){$$('.tab').forEach(t=>t.classList.toggle('on',t.id==='t-'+n));$$('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===n));$('main').scrollTop=0;if(n==='pi')loadPi();if(n==='home')loadHome()}
+$$('nav button').forEach(b=>b.onclick=()=>tab(b.dataset.t));
+
+/* ---- home ---- */
+const WX={0:['Clear','☀️'],1:['Mostly clear','🌤️'],2:['Partly cloudy','⛅'],3:['Overcast','☁️'],45:['Fog','🌫️'],48:['Fog','🌫️'],51:['Drizzle','🌦️'],53:['Drizzle','🌦️'],55:['Drizzle','🌧️'],61:['Light rain','🌧️'],63:['Rain','🌧️'],65:['Heavy rain','🌧️'],71:['Light snow','🌨️'],73:['Snow','🌨️'],75:['Heavy snow','❄️'],80:['Showers','🌦️'],81:['Showers','🌧️'],82:['Heavy showers','🌧️'],95:['Thunderstorm','⛈️'],96:['Thunderstorm','⛈️'],99:['Thunderstorm','⛈️']};
+const COL={work:'#4da3ff',uni:'#b07cff',home:'#ff9f43'};let calCfg=[];
+async function loadHome(){
+  api('/api/config').then(c=>{calCfg=c.calendars||[]}).catch(()=>{});
+  api('/api/weather').then(w=>{
+    if(w.error){$('#h-desc').textContent=w.error==='no_location'?'Set your location in Dashboard setup':'Weather unavailable';return}
+    const c=w.current,d0=w.daily?.[0],r=n=>n==null?'–':Math.round(n);
+    $('#h-temp').textContent=r(c.temp)+'°';$('#h-desc').textContent=(WX[c.code]||['—'])[0]+' · '+(w.location?.name||'');$('#h-ico').textContent=(WX[c.code]||['','☁️'])[1];
+    $('#h-sub').textContent=`Feels ${r(c.feels)}° · H ${r(d0?.hi)}° L ${r(d0?.lo)}° · ${r(c.wind)} mph`;
+  }).catch(e=>{if(e.auth)needAuth()});
+  api('/api/calendar').then(c=>{
+    const now=new Date(),out=[];
+    for(let i=0;i<3;i++){const a=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i),b=new Date(+a+864e5);
+      const ev=c.events.filter(e=>{const s=new Date(e.start),en=new Date(e.end);return e.allDay?(s<b&&en>a):(s>=a&&s<b&&(i>0||en>now))});
+      if(!ev.length&&i>0)continue;out.push(`<div class="dl">${['Today','Tomorrow'][i]||a.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})}</div>`);
+      if(!ev.length)out.push('<div class="dim small">Nothing on</div>');
+      for(const e of ev){const col=calCfg.find(x=>x.id===e.cal)?.color||COL[e.cal]||'#4da3ff';out.push(`<div class="ev"><div class="tm">${e.allDay?'All day':hhmm(new Date(e.start))}</div><div class="bar" style="background:${col}"></div><div class="grow"><div class="tt">${esc(e.title)}</div>${e.location?`<div class="small dim">${esc(e.location)}</div>`:''}</div></div>`)}}
+    $('#h-cal').innerHTML=out.join('')||'<div class="dim small">No calendars yet</div>';
+  }).catch(()=>{$('#h-cal').textContent='Calendar unavailable'});
+  loadTodo();
+}
+function loadTodo(){api('/api/todoist').then(t=>{
+  if(t.error){$('#h-td').textContent=t.error==='no_token'?'Add your Todoist token in Dashboard setup':'Todoist unavailable';return}
+  $('#h-td').innerHTML=t.tasks.length?t.tasks.map(k=>`<div class="td" data-id="${esc(k.id)}"><button class="chk p${k.priority}" aria-label="Complete"><svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></button><div class="grow">${esc(k.content)}${k.overdue?'<div class="od">Overdue</div>':''}</div></div>`).join(''):'All done for today 🎉'}).catch(()=>{})}
+$('#h-td').addEventListener('click',async e=>{const b=e.target.closest('.chk');if(!b)return;const row=b.closest('.td');row.classList.add('done');
+  try{await api('/api/todoist/close',{method:'POST',json:{id:row.dataset.id}});setTimeout(loadTodo,400)}catch{row.classList.remove('done');toast('Couldn’t complete that')}});
+
+/* ---- music (talks to the Pi's WebSocket, same messages as the wall screen) ---- */
+const S={status:'idle',item:null,pos:{ms:0,at:0,speed:0},opts:{shuffle:false,repeat:'off'},auth:null,bridge:false,q:[]};let ws=null,wsT=0,wsOn=false;
+const IC={play:'<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',pause:'<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6zm8-14v14h4V5z"/></svg>',rep:'<svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2z"/></svg>',rep1:'<svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2zm-4-2V9h-1l-2 1v1h1.5v4z"/></svg>'};
+const nm=e=>e?.decorations?.identity?.name||'';
+const cover=e=>{const c=e?.decorations?.visual_identity?.cover||[];const by=k=>c.find(x=>x.size===k)?.url;return by('large')||by('xlarge')||by('default')||c[0]?.url||''};
+const artists=e=>(e?.decorations?.creators||[]).map(c=>nm(c.entity)).filter(Boolean).join(', ');
+function wsUrl(){const u=new URL(C.base||location.origin);return (u.protocol==='https:'?'wss://':'ws://')+u.host+'/ws'+(C.token?'?token='+encodeURIComponent(C.token):'')}
+function openWS(){
+  if(!wsOn)return; ws=new WebSocket(wsUrl());
+  ws.onmessage=e=>{try{onMsg(JSON.parse(e.data))}catch{}};
+  ws.onclose=()=>{S.bridge=false;drawMusic();clearTimeout(wsT);if(wsOn)wsT=setTimeout(openWS,2000)};
+}
+const cmd=(command,extra={})=>{if(ws?.readyState===1)ws.send(JSON.stringify({type:'command',command,...extra}));else toast('Not connected to the Pi')};
+function onMsg(m){
+  switch(m.type){
+    case'bridge':S.bridge=m.connected;if(!m.connected)S.auth=null;break;
+    case'auth_state':S.auth=m;break;
+    case'playback_state':S.status=m.status;S.item=m.item;if(m.position)S.pos={ms:m.position.position_ms,at:performance.now(),speed:m.position.speed??1};S.opts={...S.opts,...m.options};if(m.is_active!==undefined&&S.auth)S.auth.is_active=m.is_active;break;
+    case'track_changed':S.item=m.item;break;case'playback_changed':S.status=m.status;break;
+    case'device_changed':if(S.auth){S.auth.is_active=m.is_active;S.auth.device_name=m.device_name}break;
+    case'options_changed':S.opts={...S.opts,...m.options};break;
+    case'position_sync':if(m.position)S.pos={ms:m.position.position_ms,at:performance.now(),speed:m.position.speed??1};break;
+    case'queue_changed':S.q=m.upcoming||[];break;
+  }
+  drawMusic();
+}
+const dur=()=>S.item?.decorations?.playback?.duration_ms||0, curMs=()=>S.pos.ms+(performance.now()-S.pos.at)*S.pos.speed;
+function drawMusic(){
+  const it=S.item;$('#mt').textContent=nm(it)||'Nothing playing';$('#ma').textContent=artists(it);
+  const a=cover(it);if($('#art')._a!==a){$('#art')._a=a;$('#art').style.backgroundImage=a?`url("${a}")`:''}
+  $('#c-pl').innerHTML=S.status==='playing'?IC.pause:IC.play;$('#c-sh').classList.toggle('on',!!S.opts.shuffle);
+  $('#c-rp').innerHTML=S.opts.repeat==='track'?IC.rep1:IC.rep;$('#c-rp').classList.toggle('on',S.opts.repeat&&S.opts.repeat!=='off');
+  const d=$('#m-dev'),act=S.auth?.is_active;d.className='pill '+(!S.bridge?'bad':act?'ok':'');d.lastChild.textContent=!S.bridge?'Pi player offline':act?'Playing on '+(S.auth?.device_name||'Pi'):'Not playing on the Pi';
+  $('#m-here').style.display=S.bridge&&S.auth?.logged_in&&!act?'block':'none';$('#m-back').style.display=act?'block':'none';
+  $('#m-q').innerHTML=S.q.length?S.q.slice(0,12).map(q=>`<div class="q"><div class="grow"><div class="t">${esc(nm(q.item))}</div><div class="small dim">${esc(artists(q.item))}</div></div></div>`).join(''):'Nothing queued';
+}
+setInterval(()=>{if(!wsOn)return;const d=dur(),ms=Math.min(curMs(),d||1e12);$('#mcur').textContent=fmtT(ms);$('#mdur').textContent=fmtT(d);$('#mfill').style.transform=`scaleX(${d?Math.min(1,ms/d):0})`},500);
+$('#c-pl').onclick=()=>cmd(S.status==='playing'?'pause':'play');$('#c-nx').onclick=()=>cmd('skip_next');$('#c-pv').onclick=()=>cmd('skip_prev');
+$('#c-sh').onclick=()=>cmd('set_shuffle',{enabled:!S.opts.shuffle});
+$('#c-rp').onclick=()=>{const n={off:'context',context:'track',track:'off'}[S.opts.repeat||'off'];
+  if(n==='context'){cmd('set_repeat_track',{enabled:false});cmd('set_repeat_context',{enabled:true})}else if(n==='track'){cmd('set_repeat_context',{enabled:false});cmd('set_repeat_track',{enabled:true})}else{cmd('set_repeat_track',{enabled:false});cmd('set_repeat_context',{enabled:false})}};
+$('#bar').addEventListener('pointerdown',e=>{const r=$('#bar div').getBoundingClientRect(),d=dur();if(d)cmd('seek',{position_ms:Math.round(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*d)})});
+$('#m-here').onclick=()=>{cmd('activate');toast('Moving playback to the Pi')};
+$('#m-back').onclick=async()=>{try{const j=await api('/api/handback',{method:'POST',json:{play:S.status==='playing'}});toast('Sent to '+(j.name||'your phone'))}catch{toast('Couldn’t find your phone. Open Spotify on it first')}};
+$('#t-music').addEventListener('touchstart',()=>{});
+// swipe the artwork to skip, like the wall screen
+(function(){let x0=null,y0=0;const a=$('#art');a.style.touchAction='pan-y';a.addEventListener('pointerdown',e=>{x0=e.clientX;y0=e.clientY});
+  a.addEventListener('pointerup',e=>{if(x0===null)return;const dx=e.clientX-x0,dy=e.clientY-y0;x0=null;if(Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)*1.5)cmd(dx<0?'skip_next':'skip_prev')})})();
+
+/* ---- Pi tab ---- */
+const isoLocal=d=>{const o=-d.getTimezoneOffset(),s=o>=0?'+':'-';return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00${s}${pad(Math.floor(Math.abs(o)/60))}:${pad(Math.abs(o)%60)}`};
+async function loadPi(){
+  try{const p=await api('/api/power');const f=ms=>new Date(ms).toLocaleString('en-GB',{weekday:'short',hour:'2-digit',minute:'2-digit'});
+    $('#p-state').textContent=p.sleeping?`Asleep until ${f(p.until)}${p.alarmAt?' · alarm '+hhmm(new Date(p.alarmAt)):''}`:(p.alarmActive?'Alarm ringing':'Awake');
+    $('#p-sleep').style.display=p.sleeping?'none':'block'}catch(e){if(e.auth)needAuth()}
+  api('/api/photos').then(l=>$('#p-photos').textContent=l.length+' photo'+(l.length===1?'':'s')+' in the slideshow').catch(()=>{});
+  $('#p-setup').href=(C.base||'')+'/setup.html';$('#p-full').href=(C.base||'')+'/';
+}
+$('#p-sleep').onclick=async()=>{const [h,m]=$('#p-time').value.split(':').map(Number),d=new Date();d.setHours(h,m,0,0);if(+d<Date.now()+60e3)d.setDate(d.getDate()+1);
+  try{await api('/api/sleep',{method:'POST',json:{wake:isoLocal(d),alarm:$('#p-alarm').checked}});toast('Screen sleeping until '+hhmm(d));loadPi()}catch(e){toast('Couldn’t sleep the screen')}};
+$('#p-wake').onclick=async()=>{try{await api('/api/wake',{method:'POST'});toast('Waking');setTimeout(loadPi,600)}catch{toast('Failed')}};
+$('#p-test').onclick=async()=>{try{await api('/api/alarm/test',{method:'POST'});toast('Alarm should be showing on the Pi')}catch{toast('Failed')}};
+async function shrink(file){try{const bm=await createImageBitmap(file,{imageOrientation:'from-image'}),s=Math.min(1,2560/Math.max(bm.width,bm.height));if(s===1&&file.type==='image/jpeg'&&file.size<6e6)return file;const c=document.createElement('canvas');c.width=Math.round(bm.width*s);c.height=Math.round(bm.height*s);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);return await new Promise(r=>c.toBlob(r,'image/jpeg',.9))}catch{return file}}
+$('#p-up').onchange=async e=>{const fs=[...e.target.files];e.target.value='';let n=0,bad=0;for(const f of fs){$('#p-prog').textContent=`Uploading ${++n} of ${fs.length}…`;try{await api('/api/photos',{method:'POST',body:await shrink(f)})}catch{bad++}}$('#p-prog').textContent=bad?`${bad} failed`:'Added';loadPi()};
+
+/* ---- lifecycle ---- */
+const needAuth=()=>{if(!$('#connect').classList.contains('on')){stopAll();$('#c-err').textContent='The Pi rejected the token. Enter it again.';$('#c-base').value=C.base||'';$('#connect').classList.add('on')}};
+let poll=0;
+function start(){wsOn=true;clearTimeout(wsT);try{ws&&ws.close()}catch{};openWS();loadHome();clearInterval(poll);poll=setInterval(()=>{if(!document.hidden){if($('#t-home').classList.contains('on'))loadHome();if($('#t-pi').classList.contains('on'))loadPi()}},60e3)}
+function stopAll(){wsOn=false;clearTimeout(wsT);clearInterval(poll);try{ws&&ws.close()}catch{}}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&C.base!==undefined&&wsOn){if(ws?.readyState!==1){clearTimeout(wsT);openWS()}loadHome()}});
+(async()=>{
+  if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+  if(C.base!==undefined&&(C.base||C.token!==undefined)&&await connect(C.base,C.token,true))return;
+  // opened from the Pi itself? then it just works, no address or token needed
+  if(await connect('',''  ,true))return;
+  $('#c-base').value=C.base||'';$('#connect').classList.add('on');
+})();
+</script></body></html>

@@ -56,3 +56,19 @@ Try it without a Pi: `node tools/mock-soloist.js &` then `DEMO=1 node server.js`
 - **Spotify's own music videos** aren't exposed to third-party clients or Soloist, hence the YouTube approach. Some uploads block embedding.
 - Bluetooth to the Zeppelin is lossy. Use a USB DAC into its aux input to keep the chain clean (the Pi 5 has no headphone jack).
 - Not tested on real hardware yet. Soloist's output was only exercised through a mock built from its documented WebSocket API.
+
+## Companion app (PWA)
+
+`public/app/` is an installable phone app: Home (weather, calendar, Todoist), Music (controls, queue, play on the Pi / send back to phone) and Pi (sleep, wake, test alarm, add photos, setup links). It is plain static files, so it can be served two ways.
+
+**1. From the Pi itself (simplest).** Open `https://<pi-https-address>/app/` on the phone, Share, Add to Home Screen. Same origin, so no CORS and no address screen. If you have set an API token, sleep and wake need it, so use way 2 or the connect screen.
+
+**2. Hosted on GitHub Pages.** `.github/workflows/pages.yml` publishes `public/app` on every push to `main` (Settings, Pages, Source: GitHub Actions; free Pages needs a public repo, and the app contains no secrets). Then:
+1. In Dashboard setup, set an **API token** and add the Pages address (e.g. `https://noaharram.github.io`) under **Allowed app addresses**.
+2. Open the Pages URL on the phone, enter the Pi's HTTPS address and the token, then Add to Home Screen.
+
+Cross-origin requests are refused unless the origin is allow-listed **and** the token is sent (REST and the WebSocket via `?token=`). Same-origin behaviour is unchanged.
+
+**The Pi needs an HTTPS address.** An HTTPS page cannot call `http://192.168.x.x` (mixed content), and a service worker needs a secure context. Pick one:
+- **Tailscale Serve** (private, recommended): install Tailscale on the Pi and phone, then `sudo tailscale serve --bg 8080`. You get `https://<pi>.<tailnet>.ts.net`, reachable only on your tailnet.
+- **Cloudflare Tunnel** (public URL, so set the token): `cloudflared tunnel --url http://localhost:8080` for a quick test, or a named tunnel with your own domain for a permanent address.

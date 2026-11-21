@@ -33,10 +33,16 @@ const b64url = b => b.toString('base64').replace(/\+/g, '-').replace(/\//g, '_')
 
 // Browsers on other sites must not be able to drive the player (Soloist's own
 // WebSocket has no Origin checks, so this proxy is the only gate).
+let confGet = () => ({});
+const allowedOrigins = () => [...(confGet().corsOrigins || []), ...(process.env.CORS_ORIGINS || '').split(',').map(x => x.trim()).filter(Boolean)];
+function tokenFrom(req) { const u = new URL(req.url, 'http://x'); return (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || req.headers['x-token'] || u.searchParams.get('token') || ''; }
+const tokenValid = req => { const t = confGet().apiToken; return !!t && tokenFrom(req) === t; };
+// Same-site pages pass. A page on another origin (e.g. the hosted companion app) passes only if it is on the allow-list AND sends the API token.
 function sameOrigin(req) {
   const o = req.headers.origin;
   if (!o) return true; // non-browser clients / same-origin GETs
-  try { return new URL(o).host === req.headers.host; } catch { return false; }
+  try { if (new URL(o).host === req.headers.host) return true; } catch { return false; }
+  return allowedOrigins().includes(o) && tokenValid(req);
 }
 
 /* ---------- Spotify OAuth (PKCE, no client secret) ---------- */
@@ -294,6 +300,22 @@ async function videoLookup(res, url) {
 /* ---------- HTTP ---------- */
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
+  const org = req.headers.origin;
+  if (org) { // cross-origin browser request (the hosted companion app)
+    let same = false; try { same = new URL(org).host === req.headers.host; } catch {}
+    if (!same) {
+      const api = url.pathname.startsWith('/api/') || url.pathname.startsWith('/photos/');
+      if (!allowedOrigins().includes(org)) { if (api) return json(res, 403, { error: 'origin not allowed' }); }
+      else {
+        res.setHeader('Access-Control-Allow-Origin', org); res.setHeader('Vary', 'Origin');
+        res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Dash, X-Token');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        res.setHeader('Access-Control-Allow-Private-Network', 'true'); res.setHeader('Access-Control-Max-Age', '600');
+        if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+        if (api && !tokenValid(req)) return json(res, 401, { error: 'token required' });
+      }
+    }
+  }
   try {
     if (url.pathname === '/auth/login') return authLogin(req, res);
     if (url.pathname === '/auth/callback') return authCallback(req, res, url);
@@ -320,7 +342,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/handback' && req.method === 'POST') return handBack(req, res);
     if (url.pathname.startsWith('/api/spotify/')) return spotifyProxy(req, res, url, url.pathname.slice('/api/spotify/'.length));
     // static
-    let p = path.normalize(path.join(PUB, url.pathname === '/' ? 'index.html' : url.pathname));
+    let p = path.normalize(path.join(PUB, url.pathname === '/' ? 'index.html' : url.pathname.endsWith('/') ? url.pathname + 'index.html' : url.pathname));
     if (!p.startsWith(PUB)) { res.writeHead(403); return res.end(); }
     fs.readFile(p, (err, data) => {
       if (err) { res.writeHead(404); return res.end('not found'); }
@@ -332,6 +354,7 @@ const server = http.createServer(async (req, res) => {
 
 const homeApi = require('./home')({ CFG, json, readJson, writeJson, sameOrigin });
 const powerApi = require('./power')({ CFG, json, readJson, writeJson, sameOrigin, getConf: homeApi.getConf });
+confGet = homeApi.getConf;
 
 /* ---------- Soloist bridge ---------- */
 const CMDS = {

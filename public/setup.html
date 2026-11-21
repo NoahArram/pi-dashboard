@@ -47,6 +47,7 @@ button.g{background:var(--panel2);color:var(--text);border:1px solid var(--line)
 <div class="two"><button id="asave">Save</button><button class="g" id="atest">Test alarm now</button></div>
 <div class="two" style="margin-top:10px"><button class="g" id="sl2">Sleep for 2 minutes (test)</button><button class="g" id="wk">Wake now</button></div>
 <div class="small" style="margin-top:14px">API token (optional)</div><input id="at" type="password" placeholder="Leave empty for no token" autocomplete="off"><button class="g" id="atsave">Save token</button><span class="small" id="ats"></span>
+<div class="small" style="margin-top:14px">Allowed app addresses (for the hosted companion app, one per line; needs the token above)</div><textarea id="co" rows="2" placeholder="https://noaharram.github.io" style="width:100%;background:#181c23;color:inherit;border:1px solid #242a33;border-radius:12px;padding:10px"></textarea><button class="g" id="cosave">Save addresses</button><span class="small" id="cos"></span>
 <p class="hint"><b>iOS Shortcut:</b> add a <i>Get Contents of URL</i> action. URL <code id="u1"></code>, method <b>POST</b>, request body <b>JSON</b> with a text field <code>wake</code>. For its value, use <i>Format Date</i> on the wake-up date and choose <b>ISO 8601</b> with the time included. Apple’s docs show this as 2016-06-01T14:41:36-08:00, offset included. Plain <code>07:00</code> also works (next 7am). Add <code>"alarm": false</code> to skip tomorrow’s alarm. <code>/api/wake</code> wakes it early. With a token set, send header <code>Authorization: Bearer &lt;token&gt;</code>.</p></div>
 <h2>Weather model</h2>
 <div class="card"><select id="wm"><option value="ukmo_seamless">Met Office (UKV 2 km over the UK, global elsewhere)</option><option value="">Open-Meteo best match</option></select><button id="wsave" style="margin-top:8px">Save</button></div>
@@ -57,7 +58,7 @@ const msg=t=>{const m=$('#msg');m.textContent=t;m.style.opacity=1;clearTimeout(m
 const put=async b=>{const r=await fetch('/api/config',{method:'PUT',headers:{'X-Dash':'1','Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok){msg(j.error||'Failed');return null}cfg=j;draw();return j};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function draw(){
-  $('#ae').checked=cfg.alarm.enabled;$('#ad').value=cfg.alarm.delayMin;$('#ao').value=cfg.alarm.autoOffMin;$('#dw').value=cfg.defaultWake;$('#av').value=cfg.alarm.volume;$('#avl').textContent=cfg.alarm.volume;$('#ats').textContent=cfg.tokenSet?' A token is set.':'';$('#u1').textContent=location.origin+'/api/sleep';
+  $('#ae').checked=cfg.alarm.enabled;$('#ad').value=cfg.alarm.delayMin;$('#ao').value=cfg.alarm.autoOffMin;$('#dw').value=cfg.defaultWake;$('#av').value=cfg.alarm.volume;$('#avl').textContent=cfg.alarm.volume;$('#co').value=(cfg.corsOrigins||[]).join('\n');$('#ats').textContent=cfg.tokenSet?' A token is set.':'';$('#u1').textContent=location.origin+'/api/sleep';
   $('#loc').innerHTML=cfg.location?`Current: <b>${esc(cfg.location.name)}</b>`:'No location set';
   $('#cals').innerHTML=cfg.calendars.length?cfg.calendars.map(c=>`<div class="row"><span class="dot" style="background:${c.color}"></span><div class="t">${esc(c.name)}</div><button class="g" data-rm="${c.id}">Remove</button></div>`).join(''):'<div class="small">No calendars yet.</div>';
   $('#tds').textContent=cfg.todoist?'A token is saved.':'No token saved.';
@@ -78,6 +79,7 @@ const act=(u,b,t)=>async()=>{const r=await fetch(u,{method:'POST',headers:{'X-Da
 $('#atest').onclick=async()=>{await $('#asave').onclick();act('/api/alarm/test',{},'Alarm should be showing on the Pi')()};
 $('#sl2').onclick=act('/api/sleep',{minutes:2},'Screen sleeps now, wakes in 2 min');
 $('#wk').onclick=act('/api/wake',{},'Waking');
+$('#cosave').onclick=async()=>{if(await put({corsOrigins:$('#co').value.split(/\s+/).filter(Boolean)}))msg('Addresses saved')};
 $('#atsave').onclick=async()=>{if(await put({apiToken:$('#at').value})){$('#at').value='';msg('Token saved')}};
 fetch('/api/config').then(r=>r.json()).then(j=>{cfg=j;draw()});
 </script></body></html>
