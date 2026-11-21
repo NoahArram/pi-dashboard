@@ -226,7 +226,7 @@ h2{font-size:19px;margin:28px 0 12px;color:var(--text)}
 .cg .dc.today{background-color:rgba(255,255,255,.028)}
 .ce{position:absolute;box-sizing:border-box;border-radius:8px;padding:3px 7px;overflow:hidden;border-left:3px solid var(--c);background:color-mix(in srgb,var(--c) 24%,var(--panel));color:var(--text);min-width:0}
 .ce .t{font-size:clamp(12px,1vw,15px);font-weight:620;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
-.ce .m{font-size:11px;color:var(--dim);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.ce .m{font-size:11px;color:var(--dim);line-height:1.3;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 .ce.past{opacity:.42}
 .ce.now{box-shadow:0 0 0 1.5px var(--c)}
 .nowline{position:absolute;left:0;right:0;height:0;border-top:2px solid #ff5d5d;z-index:3;pointer-events:none}
@@ -1121,7 +1121,7 @@ function renderCal() {
     const evs = layoutDay(tm).map(t => {
       const top = t.s * hh, h = Math.max(24, (t.e - t.s) * hh - 2), w = 100 / t.cols;
       const past = t.endAbs <= now, cur = t.full <= now && t.fullEnd > now;
-      return `<div class="ce${past ? ' past' : ''}${cur ? ' now' : ''}" style="--c:${calColor(t.ev.cal)};top:${top}px;height:${h}px;left:calc(${t.col * w}% + 2px);width:calc(${w}% - 4px)"><div class="t">${esc(t.ev.title)}</div>${h >= 40 ? `<div class="m">${hhmm(t.full)}–${hhmm(t.fullEnd)}</div>` : ''}${h >= 70 && t.ev.location ? `<div class="m">${esc(t.ev.location)}</div>` : ''}</div>`;
+      return `<div class="ce${past ? ' past' : ''}${cur ? ' now' : ''}" style="--c:${calColor(t.ev.cal)};top:${top}px;height:${h}px;left:calc(${t.col * w}% + 2px);width:calc(${w}% - 4px)"><div class="t">${esc(t.ev.title)}</div>${h >= 46 ? `<div class="m">${hhmm(t.full)}–${hhmm(t.fullEnd)}</div>` : ''}${h >= 76 && t.ev.location ? `<div class="m">${esc(t.ev.location)}</div>` : ''}</div>`;
     }).join('');
     let nl = '';
     if (d.today) { const y = ((now - d.a) / 36e5) * hh; nl = `<div class="nowline" style="top:${y}px"></div>`; chip = `<div class="nowchip" style="top:${y}px">${hhmm(now)}</div>`; }
