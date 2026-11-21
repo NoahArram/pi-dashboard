@@ -1306,31 +1306,35 @@ function startAlarm() {
   updAlarmText(); $('#alarm').classList.add('on'); hideSaver();
   try {
     const ctx = AL.ctx || (AL.ctx = new (window.AudioContext || window.webkitAudioContext)()); ctx.resume?.();
-    const vol = Math.max(1, Math.min(100, H.cfg?.alarm?.volume ?? 30)) / 100, target = 0.5 * vol * vol, t0 = ctx.currentTime;
-    const master = ctx.createGain(); master.gain.setValueAtTime(target * 0.15, t0); master.gain.linearRampToValueAtTime(target, t0 + 90);
-    const comp = ctx.createDynamicsCompressor(); master.connect(comp); comp.connect(ctx.destination);
-    const rev = ctx.createConvolver(); rev.buffer = impulse(ctx, 3.2, 2.4); const wet = ctx.createGain(); wet.gain.value = 0.6; rev.connect(wet); wet.connect(master);
+    // volume 1-100 -> master gain 0.2..1.0 (quiet end still audible); rises to full over ~20 s so it wakes you gently but isn't lost in the 2-minute window
+    const vol = Math.max(1, Math.min(100, H.cfg?.alarm?.volume ?? 70)) / 100, target = 0.2 + 0.8 * vol, t0 = ctx.currentTime;
+    const master = ctx.createGain(); master.gain.setValueAtTime(target * 0.45, t0); master.gain.linearRampToValueAtTime(target, t0 + 20);
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 3; master.connect(comp); comp.connect(ctx.destination);
+    const rev = ctx.createConvolver(); rev.buffer = impulse(ctx, 2.6, 2.2); const wet = ctx.createGain(); wet.gain.value = 0.35; rev.connect(wet); wet.connect(master);
     AL.master = master; AL.nodes = [master, comp, rev, wet];
-    const scale = [261.63, 293.66, 329.63, 392, 440, 523.25, 587.33]; let idx = 2, step = 0;
-    const bell = (f, when, dur, gain) => {
-      const o = ctx.createOscillator(), o2 = ctx.createOscillator(), e = ctx.createGain(), g2 = ctx.createGain();
-      o.type = 'sine'; o2.type = 'triangle'; o.frequency.value = f; o2.frequency.value = f * 2; g2.gain.value = 0.22;
-      e.gain.setValueAtTime(0, when); e.gain.linearRampToValueAtTime(gain, when + 0.05); e.gain.exponentialRampToValueAtTime(0.0001, when + dur);
-      o.connect(e); o2.connect(g2); g2.connect(e); e.connect(master); e.connect(rev);
-      o.start(when); o2.start(when); o.stop(when + dur + 0.1); o2.stop(when + dur + 0.1);
+    // warm music-box chime: a few decaying partials per note, soft but clear
+    const chime = (f, when, gain, dur = 2.2) => {
+      const e = ctx.createGain(); e.gain.setValueAtTime(0, when); e.gain.linearRampToValueAtTime(gain, when + 0.008); e.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+      [[1, 1], [2, 0.38], [3.01, 0.16], [4.2, 0.07]].forEach(([m, g]) => { const o = ctx.createOscillator(), og = ctx.createGain(); o.type = 'sine'; o.frequency.value = f * m; og.gain.value = g; o.connect(og); og.connect(e); o.start(when); o.stop(when + dur + 0.1); });
+      e.connect(master); e.connect(rev);
     };
-    const pad = when => [130.81, 196, 261.63, 329.63].forEach(f => {
-      const o = ctx.createOscillator(), e = ctx.createGain(); o.type = 'sine'; o.frequency.value = f;
-      e.gain.setValueAtTime(0, when); e.gain.linearRampToValueAtTime(0.16, when + 4); e.gain.linearRampToValueAtTime(0, when + 12);
-      o.connect(e); e.connect(master); e.connect(rev); o.start(when); o.stop(when + 12.2);
+    const pad = when => [130.81, 196, 261.63, 329.63, 392].forEach(f => { // C major 9-ish swell underneath
+      const o = ctx.createOscillator(), e = ctx.createGain(); o.type = 'triangle'; o.frequency.value = f;
+      e.gain.setValueAtTime(0, when); e.gain.linearRampToValueAtTime(0.07, when + 3); e.gain.linearRampToValueAtTime(0, when + 9);
+      o.connect(e); e.connect(master); e.connect(rev); o.start(when); o.stop(when + 9.2);
     });
+    // C major pentatonic motifs that repeat, so it feels like a tune rather than random notes
+    const C5 = 523.25, N = { C: C5, D: C5 * 1.1225, E: C5 * 1.26, G: C5 * 1.4983, A: C5 * 1.6818, c: C5 * 2, d: C5 * 2.245, e: C5 * 2.52 };
+    const motifs = [['C', 'E', 'G', 'c', 'G', 'E'], ['E', 'G', 'A', 'e', 'c', 'A'], ['G', 'A', 'c', 'd', 'c', 'G'], ['A', 'G', 'E', 'D', 'E', 'C']];
+    let step = 0;
     const loop = () => {
-      const t = ctx.currentTime + 0.05; if (step % 5 === 0) pad(t);
-      idx = Math.max(0, Math.min(scale.length - 1, idx + [-2, -1, -1, 0, 1, 1, 2][Math.random() * 7 | 0]));
-      bell(scale[idx], t, 3.4, 0.5); if (Math.random() < 0.35) bell(scale[Math.min(scale.length - 1, idx + 2)], t + 0.7, 3, 0.3);
+      const t = ctx.currentTime + 0.05, m = motifs[step % motifs.length], loud = Math.min(1, 0.6 + step * 0.06);
+      if (step % 2 === 0) pad(t);
+      m.forEach((k, i) => chime(N[k], t + i * 0.32, 0.42 * loud + (i === 0 ? 0.12 : 0)));
+      if (step >= 3) chime(N[m[0]] / 2, t, 0.3 * loud, 3); // low octave joins after a few bars
       step++;
     };
-    loop(); clearInterval(AL.timer); AL.timer = setInterval(loop, 2600);
+    loop(); clearInterval(AL.timer); AL.timer = setInterval(loop, 4200);
   } catch (e) { console.warn('alarm audio', e); }
 }
 function stopAlarm() {

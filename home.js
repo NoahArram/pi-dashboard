@@ -7,7 +7,7 @@ module.exports = function init({ CFG, json, readJson, writeJson, sameOrigin }) {
   const CONF = path.join(CFG.dataDir, 'config.json');
   const PHOTOS = path.join(CFG.dataDir, 'photos'), ORIG = path.join(CFG.dataDir, 'originals'), THUMB = path.join(CFG.dataDir, 'thumbs');
   fs.mkdirSync(PHOTOS, { recursive: true, mode: 0o755 });
-  const DEF = { location: null, calendars: [], todoistToken: '', saver: { photoMin: 5, idleMin: 3 }, weatherModel: 'ukmo_seamless', alarm: { enabled: true, delayMin: 15, volume: 30, autoOffMin: 2 }, defaultWake: '07:00', apiToken: '', corsOrigins: [] };
+  const DEF = { location: null, calendars: [], todoistToken: '', saver: { photoMin: 5, idleMin: 3 }, weatherModel: 'ukmo_seamless', alarm: { enabled: true, delayMin: 15, volume: 70, autoOffMin: 2 }, defaultWake: '07:00', apiToken: '', corsOrigins: [] };
   let conf = { ...DEF, ...readJson(CONF, {}) }; conf.alarm = { ...DEF.alarm, ...conf.alarm }; conf.saver = { ...DEF.saver, ...conf.saver };
   const save = () => writeJson(CONF, conf);
   const guard = (req, res) => { if (req.headers['x-dash'] !== '1' || !sameOrigin(req)) { json(res, 403, { error: 'bad origin' }); return false; } return true; };
