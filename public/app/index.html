@@ -117,6 +117,7 @@ $$('nav button').forEach(b=>b.onclick=()=>tab(b.dataset.t));
 /* ---- screen power: state, next wake-up and alarm, wake now ---- */
 const dayTime=ms=>{const d=new Date(ms),n=new Date(),k=Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-new Date(n.getFullYear(),n.getMonth(),n.getDate()))/864e5);
   return (k===0?'Today':k===1?'Tomorrow':d.toLocaleDateString('en-GB',{weekday:'short'}))+' '+hhmm(d)};
+const lastWake=()=>{try{return localStorage.getItem('pi-wake')||''}catch{return ''}};
 function drawPower(p){
   const st=p.sleeping?'Asleep':p.alarmActive?'Alarm ringing':'Awake',row=(l,v)=>`<div class="pw"><span class="dim">${l}</span><b>${v}</b></div>`;
   let h=`<div class="pst">${st}</div>`;
@@ -126,6 +127,8 @@ function drawPower(p){
   $('#h-pw').innerHTML=h;$('#p-state').innerHTML=h;
   $('#h-wake').style.display=(p.sleeping||p.alarmActive)?'block':'none';
   $('#p-sleep').style.display=p.sleeping?'none':'block';$('#p-wake').classList.toggle('g',!p.sleeping);
+  // the Wake at field shows the real scheduled time while asleep, else the last time you used
+  const ti=$('#p-time');if(document.activeElement!==ti){const v=p.sleeping?hhmm(new Date(p.until)):lastWake();if(v)ti.value=v}
 }
 const refreshPower=()=>api('/api/power').then(drawPower).catch(e=>{if(e.auth)needAuth();else $('#h-pw').textContent='Can’t reach the Pi'});
 async function wakeNow(){try{await api('/api/wake',{method:'POST'});toast('Waking');setTimeout(refreshPower,600)}catch{toast('Couldn’t wake it')}}
@@ -217,7 +220,7 @@ function loadPi(){
   $('#p-setup').href=(C.base||'')+'/setup.html';$('#p-full').href=(C.base||'')+'/';
 }
 $('#p-sleep').onclick=async()=>{const [h,m]=$('#p-time').value.split(':').map(Number),d=new Date();d.setHours(h,m,0,0);if(+d<Date.now()+60e3)d.setDate(d.getDate()+1);
-  try{await api('/api/sleep',{method:'POST',json:{wake:isoLocal(d),alarm:$('#p-alarm').checked}});toast('Screen sleeping until '+hhmm(d));refreshPower()}catch(e){toast('Couldn’t sleep the screen')}};
+  try{await api('/api/sleep',{method:'POST',json:{wake:isoLocal(d),alarm:$('#p-alarm').checked}});try{localStorage.setItem('pi-wake',$('#p-time').value)}catch{}toast('Screen sleeping until '+hhmm(d));refreshPower()}catch(e){toast('Couldn’t sleep the screen')}};
 $('#p-wake').onclick=wakeNow;
 $('#p-test').onclick=async()=>{try{await api('/api/alarm/test',{method:'POST'});toast('Alarm should be showing on the Pi')}catch{toast('Failed')}};
 const extOf=f=>{const m=/\.([a-z0-9]{1,5})$/i.exec(f.name);return m?m[1].toLowerCase():({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/heic':'heic','image/heif':'heif'}[f.type]||'jpg')};
