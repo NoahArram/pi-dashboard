@@ -42,6 +42,8 @@ input[type=text],input[type=password],input[type=time],input[type=url]{width:100
 .ctl .play{width:72px;height:72px;background:var(--text);color:#000;font-size:38px}.ctl .sm{font-size:24px;color:var(--dim)}.ctl .on{color:var(--accent)}
 .q{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.q:first-of-type{border-top:0}.q .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pill{display:inline-flex;gap:6px;align-items:center;font-size:12px;color:var(--dim)}.pill i{width:8px;height:8px;border-radius:50%;background:var(--faint)}.pill.ok i{background:var(--accent)}.pill.bad i{background:var(--bad)}
+.pst{font-size:22px;font-weight:700;margin-bottom:4px}
+.pw{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-top:1px solid var(--line);font-size:15px}.pw:first-of-type{border-top:0}.pw b{font-weight:650;font-variant-numeric:tabular-nums}
 #toast{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#e9ecf1;color:#000;padding:10px 18px;border-radius:999px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9;max-width:90vw;text-align:center}
 #connect{position:fixed;inset:0;background:var(--bg);z-index:20;display:none;padding:calc(30px + env(safe-area-inset-top)) 20px 30px;overflow:auto}#connect.on{display:block}
 #connect h1{margin:0 0 6px}.hint{color:var(--dim);font-size:13px;line-height:1.5}
@@ -49,6 +51,7 @@ input[type=text],input[type=password],input[type=time],input[type=url]{width:100
 <div id="app">
 <main>
   <section class="tab on" id="t-home">
+    <div class="card"><h2>Pi screen</h2><div id="h-pw" class="dim small">…</div><button class="btn" id="h-wake" style="display:none;margin-top:10px">Wake now</button></div>
     <div class="card"><div class="row"><div class="grow"><div class="big" id="h-temp">–°</div><div id="h-desc" class="dim" style="margin-top:6px"></div></div><div id="h-ico" style="font-size:56px"></div></div><div class="small dim" id="h-sub" style="margin-top:8px"></div></div>
     <div class="card"><h2>Calendar</h2><div id="h-cal" class="dim small">Loading…</div></div>
     <div class="card"><h2>To do</h2><div id="h-td" class="dim small">Loading…</div></div>
@@ -62,7 +65,7 @@ input[type=text],input[type=password],input[type=time],input[type=url]{width:100
     <div class="card"><h2>Up next</h2><div id="m-q" class="dim small">Nothing queued</div></div>
   </section>
   <section class="tab" id="t-pi">
-    <div class="card"><h2>Screen</h2><div id="p-state" class="dim" style="margin-bottom:10px">…</div>
+    <div class="card"><h2>Screen</h2><div id="p-state" style="margin-bottom:10px">…</div>
       <div class="small dim">Wake at</div><input type="time" id="p-time" value="07:00">
       <label class="small dim row" style="margin:6px 0 12px"><input type="checkbox" id="p-alarm" checked style="width:20px;height:20px"> Play the alarm after waking</label>
       <button class="btn" id="p-sleep">Sleep the screen</button><div class="two" style="margin-top:10px"><button class="btn g" id="p-wake" style="margin:0">Wake now</button><button class="btn g" id="p-test" style="margin:0">Test alarm</button></div></div>
@@ -111,10 +114,28 @@ $('#p-disc').onclick=()=>{stopAll();$('#c-base').value=C.base||'';$('#c-token').
 function tab(n){$$('.tab').forEach(t=>t.classList.toggle('on',t.id==='t-'+n));$$('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===n));$('main').scrollTop=0;if(n==='pi')loadPi();if(n==='home')loadHome()}
 $$('nav button').forEach(b=>b.onclick=()=>tab(b.dataset.t));
 
+/* ---- screen power: state, next wake-up and alarm, wake now ---- */
+const dayTime=ms=>{const d=new Date(ms),n=new Date(),k=Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-new Date(n.getFullYear(),n.getMonth(),n.getDate()))/864e5);
+  return (k===0?'Today':k===1?'Tomorrow':d.toLocaleDateString('en-GB',{weekday:'short'}))+' '+hhmm(d)};
+function drawPower(p){
+  const st=p.sleeping?'Asleep':p.alarmActive?'Alarm ringing':'Awake',row=(l,v)=>`<div class="pw"><span class="dim">${l}</span><b>${v}</b></div>`;
+  let h=`<div class="pst">${st}</div>`;
+  if(p.sleeping)h+=row('Next wake-up',dayTime(p.until))+row('Alarm',p.alarmAt?dayTime(p.alarmAt):'Off');
+  else if(p.alarmAt&&!p.alarmActive)h+=row('Alarm',dayTime(p.alarmAt));
+  else if(!p.alarmActive)h+='<div class="small dim">No wake-up or alarm scheduled</div>';
+  $('#h-pw').innerHTML=h;$('#p-state').innerHTML=h;
+  $('#h-wake').style.display=(p.sleeping||p.alarmActive)?'block':'none';
+  $('#p-sleep').style.display=p.sleeping?'none':'block';$('#p-wake').classList.toggle('g',!p.sleeping);
+}
+const refreshPower=()=>api('/api/power').then(drawPower).catch(e=>{if(e.auth)needAuth();else $('#h-pw').textContent='Can’t reach the Pi'});
+async function wakeNow(){try{await api('/api/wake',{method:'POST'});toast('Waking');setTimeout(refreshPower,600)}catch{toast('Couldn’t wake it')}}
+$('#h-wake').onclick=wakeNow;
+
 /* ---- home ---- */
 const WX={0:['Clear','☀️'],1:['Mostly clear','🌤️'],2:['Partly cloudy','⛅'],3:['Overcast','☁️'],45:['Fog','🌫️'],48:['Fog','🌫️'],51:['Drizzle','🌦️'],53:['Drizzle','🌦️'],55:['Drizzle','🌧️'],61:['Light rain','🌧️'],63:['Rain','🌧️'],65:['Heavy rain','🌧️'],71:['Light snow','🌨️'],73:['Snow','🌨️'],75:['Heavy snow','❄️'],80:['Showers','🌦️'],81:['Showers','🌧️'],82:['Heavy showers','🌧️'],95:['Thunderstorm','⛈️'],96:['Thunderstorm','⛈️'],99:['Thunderstorm','⛈️']};
 const COL={work:'#4da3ff',uni:'#b07cff',home:'#ff9f43'};let calCfg=[];
 async function loadHome(){
+  refreshPower();
   api('/api/config').then(c=>{calCfg=c.calendars||[]}).catch(()=>{});
   api('/api/weather').then(w=>{
     if(w.error){$('#h-desc').textContent=w.error==='no_location'?'Set your location in Dashboard setup':'Weather unavailable';return}
@@ -190,16 +211,14 @@ $('#t-music').addEventListener('touchstart',()=>{});
 
 /* ---- Pi tab ---- */
 const isoLocal=d=>{const o=-d.getTimezoneOffset(),s=o>=0?'+':'-';return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00${s}${pad(Math.floor(Math.abs(o)/60))}:${pad(Math.abs(o)%60)}`};
-async function loadPi(){
-  try{const p=await api('/api/power');const f=ms=>new Date(ms).toLocaleString('en-GB',{weekday:'short',hour:'2-digit',minute:'2-digit'});
-    $('#p-state').textContent=p.sleeping?`Asleep until ${f(p.until)}${p.alarmAt?' · alarm '+hhmm(new Date(p.alarmAt)):''}`:(p.alarmActive?'Alarm ringing':'Awake');
-    $('#p-sleep').style.display=p.sleeping?'none':'block'}catch(e){if(e.auth)needAuth()}
+function loadPi(){
+  refreshPower();
   api('/api/photos').then(l=>$('#p-photos').textContent=l.length+' photo'+(l.length===1?'':'s')+' in the slideshow').catch(()=>{});
   $('#p-setup').href=(C.base||'')+'/setup.html';$('#p-full').href=(C.base||'')+'/';
 }
 $('#p-sleep').onclick=async()=>{const [h,m]=$('#p-time').value.split(':').map(Number),d=new Date();d.setHours(h,m,0,0);if(+d<Date.now()+60e3)d.setDate(d.getDate()+1);
-  try{await api('/api/sleep',{method:'POST',json:{wake:isoLocal(d),alarm:$('#p-alarm').checked}});toast('Screen sleeping until '+hhmm(d));loadPi()}catch(e){toast('Couldn’t sleep the screen')}};
-$('#p-wake').onclick=async()=>{try{await api('/api/wake',{method:'POST'});toast('Waking');setTimeout(loadPi,600)}catch{toast('Failed')}};
+  try{await api('/api/sleep',{method:'POST',json:{wake:isoLocal(d),alarm:$('#p-alarm').checked}});toast('Screen sleeping until '+hhmm(d));refreshPower()}catch(e){toast('Couldn’t sleep the screen')}};
+$('#p-wake').onclick=wakeNow;
 $('#p-test').onclick=async()=>{try{await api('/api/alarm/test',{method:'POST'});toast('Alarm should be showing on the Pi')}catch{toast('Failed')}};
 const extOf=f=>{const m=/\.([a-z0-9]{1,5})$/i.exec(f.name);return m?m[1].toLowerCase():({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/heic':'heic','image/heif':'heif'}[f.type]||'jpg')};
 const sameOk=f=>['image/jpeg','image/png','image/webp'].includes(f.type);
@@ -212,9 +231,10 @@ $('#p-up').onchange=async e=>{const fs=[...e.target.files];e.target.value='';let
 
 /* ---- lifecycle ---- */
 const needAuth=()=>{if(!$('#connect').classList.contains('on')){stopAll();$('#c-err').textContent='The Pi rejected the token. Enter it again.';$('#c-base').value=C.base||'';$('#connect').classList.add('on')}};
-let poll=0;
-function start(){wsOn=true;clearTimeout(wsT);try{ws&&ws.close()}catch{};openWS();loadHome();clearInterval(poll);poll=setInterval(()=>{if(!document.hidden){if($('#t-home').classList.contains('on'))loadHome();if($('#t-pi').classList.contains('on'))loadPi()}},60e3)}
-function stopAll(){wsOn=false;clearTimeout(wsT);clearInterval(poll);try{ws&&ws.close()}catch{}}
+let poll=0,pwPoll=0;
+function start(){wsOn=true;clearTimeout(wsT);try{ws&&ws.close()}catch{};openWS();loadHome();clearInterval(poll);poll=setInterval(()=>{if(!document.hidden){if($('#t-home').classList.contains('on'))loadHome();if($('#t-pi').classList.contains('on'))loadPi()}},60e3);
+  clearInterval(pwPoll);pwPoll=setInterval(()=>{if(!document.hidden)refreshPower()},15e3)}
+function stopAll(){wsOn=false;clearTimeout(wsT);clearInterval(poll);clearInterval(pwPoll);try{ws&&ws.close()}catch{}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&C.base!==undefined&&wsOn){if(ws?.readyState!==1){clearTimeout(wsT);openWS()}loadHome()}});
 (async()=>{
   if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
