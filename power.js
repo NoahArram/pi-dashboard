@@ -42,7 +42,7 @@ module.exports = function init({ CFG, json, readJson, writeJson, sameOrigin, get
   function parseWake(v, now, defWake) {
     if (v === undefined || v === null || v === '') return null;
     if (typeof v === 'number' || /^\d{9,13}(\.\d+)?$/.test(String(v).trim())) { const n = +v; return n > 1e11 ? n : n * 1000; }
-    const s = String(v).trim().replace(/[\\u202f\\u00a0]/g, ' ').replace(/(\d{2}:\d{2}(?::\d{2})?)\s(\d{2}:?\d{2})$/, '$1+$2'); // a '+' in an un-encoded form body arrives as a space
+    const s = String(v).trim().replace(new RegExp('[' + String.fromCharCode(0x202f, 0xa0) + ']', 'g'), ' ').replace(/(\d{2}:\d{2}(?::\d{2})?)\s(\d{2}:?\d{2})$/, '$1+$2'); // a '+' in an un-encoded form body arrives as a space
     let m = s.match(/^(\d{1,2})[:.](\d{2})(?::\d{2})?\s*([ap]\.?m\.?)?$/i);
     if (m) { let h = +m[1]; const mi = +m[2], ap = (m[3] || '').toLowerCase(); if (ap.startsWith('p') && h < 12) h += 12; if (ap.startsWith('a') && h === 12) h = 0; if (h > 23 || mi > 59) return NaN; return nextTime(h, mi, now); }
     m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
