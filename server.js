@@ -399,6 +399,8 @@ const server = http.createServer(async (req, res) => {
     if (!p.startsWith(PUB)) { res.writeHead(403); return res.end(); }
     fs.readFile(p, (err, data) => {
       if (err) { res.writeHead(404); return res.end('not found'); }
+      // The NFC handoff animation lives in its own file; load it after the page's own script (index.html itself is untouched).
+      if (p === path.join(PUB, 'index.html')) data = Buffer.from(data.toString('utf8').replace('</body>', '<script src="/handoff.js"></script>\n</body>'));
       res.writeHead(200, { 'Content-Type': MIME[path.extname(p)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
       res.end(data);
     });
