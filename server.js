@@ -283,8 +283,34 @@ async function handBack(req, res) {
 /* ---------- Handoff: tap the phone on the NFC tag, Spotify moves to the Pi and the Music page blooms up ---------- */
 // One ping does everything: wakes the screen if it's asleep, moves playback here, and tells the kiosk page
 // (over the existing WebSocket) to run the animation. Safe to hit twice: repeats within 4 s are ignored.
+// Tapping again while the Pi is already playing does the opposite and sends playback back to the phone.
+const esc = x => String(x).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
 const sleepMs = ms => new Promise(r => setTimeout(r, ms));
 let hoSeq = 0, hoLast = 0;
+// What Soloist last told us, so a second tap can tell that the Pi is already playing.
+const pb = { status: 'idle', active: false };
+function trackSoloist(txt) {
+  if (!/playback_state|playback_changed|device_changed|auth_state/.test(txt)) return;
+  try {
+    const m = JSON.parse(txt);
+    if (m.status !== undefined && (m.type === 'playback_state' || m.type === 'playback_changed')) pb.status = m.status;
+    if (m.is_active !== undefined && ['playback_state', 'device_changed', 'auth_state'].includes(m.type)) pb.active = !!m.is_active;
+  } catch {}
+}
+// Move playback to the phone (or whichever other device was last active). Returns its name, or null.
+async function sendBackToPhone() {
+  if (CFG.demo) return 'Phone';
+  const t = await accessToken(); if (!t) return null;
+  const ds = await listDevices(t); if (!ds) return null;
+  const others = ds.filter(d => !isPi(d));
+  const dev = (origin && others.find(d => d.id === origin.id)) || others.find(d => d.type === 'Smartphone') || others[0];
+  if (!dev) return null;
+  const r = await fetch('https://api.spotify.com/v1/me/player', {
+    method: 'PUT', headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ device_ids: [dev.id], play: true }),
+  });
+  return (r.status === 204 || r.status === 200) ? dev.name : null;
+}
 async function transferHere() {
   // 1) Web API transfer: takes over from whatever device is playing. Soloist can take a moment to appear in the device list, so retry.
   const t = await accessToken();
@@ -313,11 +339,16 @@ async function handoff(req, res, url) {
   if (!powerApi.tokenOk(req, url)) return json(res, 401, { error: 'bad or missing token' });
   const accepts = (req.headers.accept || '').includes('text/html'); // an NFC URL tag opens Safari: give it a tiny page, not JSON
   const reply = (obj) => accepts && req.method === 'GET'
-    ? (res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }), res.end(`<meta name=viewport content="width=device-width"><body style="font:22px system-ui;background:#0b0d10;color:#fff;display:grid;place-items:center;height:100vh;margin:0;text-align:center"><div><div style="font-size:56px;color:#1ed760">${obj.ok ? '&#9654;' : '!'}</div>${obj.ok ? 'Playing on the Pi' : 'Couldn&rsquo;t move playback'}</div>`))
+    ? (res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }), res.end(`<meta name=viewport content="width=device-width"><body style="font:22px system-ui;background:#0b0d10;color:#fff;display:grid;place-items:center;height:100vh;margin:0;text-align:center"><div><div style="font-size:56px;color:#1ed760">${obj.ok ? '&#9654;' : '!'}</div>${obj.how === 'back' ? (obj.ok ? 'Sent back to ' + esc(obj.to) : 'Couldn&rsquo;t send it back') : obj.ok ? 'Playing on the Pi' : 'Couldn&rsquo;t move playback'}</div>`))
     : json(res, 200, obj);
   if (Date.now() - hoLast < 4000) return reply({ ok: true, duplicate: true });
   hoLast = Date.now();
   const id = ++hoSeq, from = origin?.name || null;
+  if (pb.status === 'playing' && pb.active) { // second tap while the Pi is already playing: give it back to the phone
+    const to = await sendBackToPhone().catch(e => { console.error('handoff back:', e.message); return null; });
+    broadcast(JSON.stringify({ type: 'handoff', phase: 'back', id, ok: !!to, to }));
+    return reply({ ok: !!to, how: 'back', to });
+  }
   const asleep = powerApi.isSleeping();
   if (asleep) { broadcast(JSON.stringify({ type: 'handoff', phase: 'wake', id })); powerApi.wakeNow(); } // page keeps the black veil up until the bloom
   const screens = [...wss.clients].filter(c => c.readyState === 1).length;
@@ -448,10 +479,10 @@ function connectUp() {
   up = new WebSocket(CFG.soloistWs);
   up.on('open', () => { upOpen = true; broadcast(bridge(true)); queryAll(); });
   up.on('message', d => {
-    const txt = d.toString(); broadcast(txt);
+    const txt = d.toString(); broadcast(txt); trackSoloist(txt);
     if (!normalised && !CFG.demo) { try { const m = JSON.parse(txt); if (m.type === 'auth_state' && m.logged_in) { normalised = true; up.send(JSON.stringify({ type: 'command', command: 'set_volume', volume: 100 })); } } catch {} }
   });
-  up.on('close', () => { upOpen = false; broadcast(bridge(false)); setTimeout(connectUp, 2000); });
+  up.on('close', () => { upOpen = false; pb.status = 'idle'; pb.active = false; broadcast(bridge(false)); setTimeout(connectUp, 2000); });
   up.on('error', () => {});
 }
 function queryAll() {

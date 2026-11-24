@@ -38,6 +38,7 @@
   function onHandoff(m) {
     if (m.phase === 'wake') { st.hold = true; clearTimeout(st.holdT); st.holdT = setTimeout(() => { st.hold = false; }, 6000); }
     else if (m.phase === 'start') bloom(m);
+    else if (m.phase === 'back') toast(m.ok ? 'Sent back to ' + m.to : "Couldn't send it back. No other Spotify device found.");
     else if (m.phase === 'done') toast(m.ok ? 'Playing on ' + (S.auth?.device_name || 'the Pi') : "Couldn't move playback. Start something in Spotify, then tap again.");
   }
 
