@@ -10,6 +10,7 @@
  *   {type:'handoff', phase:'wake'}   screen was asleep and is waking: keep the black veil up
  *   {type:'handoff', phase:'start'}  play the animation
  *   {type:'handoff', phase:'done', ok} playback has moved, or couldn't
+ *   {type:'handoff', phase:'back', ok, to} second tap: playback went back to the phone, so the bloom plays in reverse
  * From the dashboard or screensaver the Music page is revealed through a circle that grows from the bottom-centre,
  * with green ripples following the edge. From a sleeping screen it blooms out of black. Already on Music: ripples only.
  */
@@ -38,8 +39,32 @@
   function onHandoff(m) {
     if (m.phase === 'wake') { st.hold = true; clearTimeout(st.holdT); st.holdT = setTimeout(() => { st.hold = false; }, 6000); }
     else if (m.phase === 'start') bloom(m);
-    else if (m.phase === 'back') toast(m.ok ? 'Sent back to ' + m.to : "Couldn't send it back. No other Spotify device found.");
+    else if (m.phase === 'back') bloomBack(m);
     else if (m.phase === 'done') toast(m.ok ? 'Playing on ' + (S.auth?.device_name || 'the Pi') : "Couldn't move playback. Start something in Spotify, then tap again.");
+  }
+
+  // Second tap while playing: the Music page shrinks back into the bottom-centre and the dashboard is left showing.
+  function bloomBack(m) {
+    const say = () => toast(m.ok ? 'Sent back to ' + m.to : "Couldn't send it back. No other Spotify device found.");
+    if (!m.ok || st.running || PW.alarmActive || PW.sleeping || (PG.page === 0 && !saver.on)) return say(); // nothing to animate (or it failed): just say so
+    st.running = true;
+    const W = innerWidth, Hh = innerHeight, R = Math.ceil(Math.hypot(W / 2, Hh)) + 8, MS = 950, EASE = 'cubic-bezier(.65,0,.35,1)';
+    closeSettings(); lastAct = Date.now(); setAmbient(false); if (saver.on) hideSaver();
+    rings.forEach(r => { r.style.width = r.style.height = 2 * R + 'px'; r.style.margin = `${-R}px 0 0 ${-R}px`; });
+    setPage(0, false); clearTimeout(PG.t); homeEl.classList.remove('off');   // dashboard goes underneath, Music is laid over it and shrinks away
+    pager.classList.add('ho'); spotEl.classList.remove('off'); spotEl.style.background = 'var(--bg)';
+    Object.assign(spotEl.style, { position: 'absolute', left: '0', top: '0', zIndex: '5' });
+    const shrink = spotEl.animate([{ clipPath: `circle(${R}px at 50% 100%)` }, { clipPath: 'circle(0px at 50% 100%)' }], { duration: MS, easing: EASE, fill: 'both' });
+    const ring = (el, delay, peak) => el.animate(
+      [{ transform: 'scale(1)', opacity: 0 }, { transform: 'scale(.97)', opacity: peak, offset: .04 }, { transform: 'scale(.02)', opacity: peak, offset: .96 }, { transform: 'scale(.015)', opacity: 0 }],
+      { duration: MS, delay, easing: EASE, fill: 'backwards' });
+    ring(rings[0], 0, 1); ring(rings[1], 120, .7); ring(rings[2], 240, .45);
+    const fin = () => {
+      spotEl.style.position = spotEl.style.left = spotEl.style.top = spotEl.style.zIndex = spotEl.style.background = ''; shrink.oncancel = null; shrink.cancel();
+      pager.classList.remove('ho'); pager.style.background = '';
+      setPage(0, false); st.running = false; say();
+    };
+    shrink.onfinish = fin; shrink.oncancel = () => { if (st.running) fin(); };
   }
 
   function bloom(m) {
