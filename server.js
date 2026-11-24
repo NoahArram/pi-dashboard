@@ -18,6 +18,9 @@ const CFG = {
   ytKey: process.env.YOUTUBE_API_KEY || '',
   demo: process.env.DEMO === '1',
   deviceName: process.env.DEVICE_NAME || 'Pi',
+  // Small LAN-facing listener for the phone triggers (sleep / wake / handoff). Everything else stays on HOST (localhost by default).
+  triggerHost: process.env.TRIGGER_HOST || '0.0.0.0',
+  triggerPort: process.env.TRIGGER_PORT === undefined ? 8081 : +process.env.TRIGGER_PORT, // 0 turns it off
 };
 fs.mkdirSync(CFG.dataDir, { recursive: true, mode: 0o700 });
 const PUB = path.join(__dirname, 'public');
@@ -277,6 +280,55 @@ async function handBack(req, res) {
   json(res, 200, { ok: true, name: dev.name });
 }
 
+/* ---------- Handoff: tap the phone on the NFC tag, Spotify moves to the Pi and the Music page blooms up ---------- */
+// One ping does everything: wakes the screen if it's asleep, moves playback here, and tells the kiosk page
+// (over the existing WebSocket) to run the animation. Safe to hit twice: repeats within 4 s are ignored.
+const sleepMs = ms => new Promise(r => setTimeout(r, ms));
+let hoSeq = 0, hoLast = 0;
+async function transferHere() {
+  // 1) Web API transfer: takes over from whatever device is playing. Soloist can take a moment to appear in the device list, so retry.
+  const t = await accessToken();
+  if (t) {
+    for (let i = 0; i < 4; i++) {
+      try {
+        const dev = ((await listDevices(t)) || []).find(isPi);
+        if (dev) {
+          const r = await fetch('https://api.spotify.com/v1/me/player', {
+            method: 'PUT', headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ device_ids: [dev.id], play: true }),
+          });
+          if (r.status === 204 || r.status === 200) return 'webapi';
+          if (r.status === 401 || r.status === 403) break;
+        }
+      } catch {}
+      await sleepMs(700);
+    }
+  }
+  // 2) Not signed in to the Web API (or it wouldn't transfer): ask Soloist itself, same as the on-screen "Play here" button.
+  if (upOpen) { up.send(JSON.stringify({ type: 'command', command: 'activate' })); return 'soloist'; }
+  return null;
+}
+async function handoff(req, res, url) {
+  if (!sameOrigin(req)) return json(res, 403, { error: 'bad origin' });
+  if (!powerApi.tokenOk(req, url)) return json(res, 401, { error: 'bad or missing token' });
+  const accepts = (req.headers.accept || '').includes('text/html'); // an NFC URL tag opens Safari: give it a tiny page, not JSON
+  const reply = (obj) => accepts && req.method === 'GET'
+    ? (res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }), res.end(`<meta name=viewport content="width=device-width"><body style="font:22px system-ui;background:#0b0d10;color:#fff;display:grid;place-items:center;height:100vh;margin:0;text-align:center"><div><div style="font-size:56px;color:#1ed760">${obj.ok ? '&#9654;' : '!'}</div>${obj.ok ? 'Playing on the Pi' : 'Couldn&rsquo;t move playback'}</div>`))
+    : json(res, 200, obj);
+  if (Date.now() - hoLast < 4000) return reply({ ok: true, duplicate: true });
+  hoLast = Date.now();
+  const id = ++hoSeq, from = origin?.name || null;
+  const asleep = powerApi.isSleeping();
+  if (asleep) { broadcast(JSON.stringify({ type: 'handoff', phase: 'wake', id })); powerApi.wakeNow(); } // page keeps the black veil up until the bloom
+  const screens = [...wss.clients].filter(c => c.readyState === 1).length;
+  const moving = transferHere().catch(e => { console.error('handoff:', e.message); return null; }); // audio starts while the monitor wakes
+  if (asleep) await sleepMs(1500);                                                                     // let the monitor come back before the bloom
+  broadcast(JSON.stringify({ type: 'handoff', phase: 'start', id, woke: asleep }));
+  const how = await moving;
+  broadcast(JSON.stringify({ type: 'handoff', phase: 'done', id, ok: !!how, how, from }));
+  reply({ ok: !!how, how, from, woke: asleep, screens });
+}
+
 /* ---------- Music video lookup (YouTube Data API, cached) ---------- */
 const VID_FILE = path.join(CFG.dataDir, 'video-cache.json');
 const vids = readJson(VID_FILE, {});
@@ -331,6 +383,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (await homeApi(req, res, url)) return;
     if (await powerApi(req, res, url)) return;
+    if (url.pathname === '/api/handoff' && ['GET', 'POST'].includes(req.method)) return handoff(req, res, url);
     if (url.pathname === '/api/status') return json(res, 200, { local: ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress), loggedIn: CFG.demo || !!(await accessToken()), clientIdSet: !!CFG.clientId, ytKey: CFG.demo || !!CFG.ytKey, demo: CFG.demo, redirect: REDIRECT, bound: CFG.host, port: CFG.port, lan: Object.values(os.networkInterfaces()).flat().filter(i => i && i.family === 'IPv4' && !i.internal).map(i => i.address) });
     if (url.pathname === '/api/volume' && ['GET', 'POST'].includes(req.method)) return volumeApi(req, res);
     if (url.pathname === '/api/pins') return pinsApi(req, res);
@@ -417,3 +470,23 @@ wss.on('connection', ws => {
 connectUp();
 
 server.listen(CFG.port, CFG.host, () => console.log(`dashboard on http://${CFG.host}:${CFG.port}  soloist=${CFG.soloistWs}${CFG.demo ? '  [DEMO]' : ''}`));
+
+/* ---------- LAN trigger port: the only thing reachable from the Wi-Fi without Tailscale ---------- */
+// The dashboard itself stays on localhost (Soloist's socket and the setup pages have no auth). This second listener
+// answers just the endpoints a phone shortcut or NFC tag needs; every other path is a 404, so nothing else is exposed.
+if (CFG.triggerPort) {
+  const LAN_OK = new Set(['/api/sleep', '/api/wake', '/api/power', '/api/handoff']);
+  const lan = http.createServer(async (req, res) => {
+    try {
+      const url = new URL(req.url, 'http://x');
+      if (url.pathname === '/ping') return json(res, 200, { ok: true, name: CFG.deviceName });
+      if (!LAN_OK.has(url.pathname)) return json(res, 404, { error: 'not found' });
+      if (url.pathname === '/api/handoff' && ['GET', 'POST'].includes(req.method)) return await handoff(req, res, url);
+      if (url.pathname !== '/api/handoff' && await powerApi(req, res, url)) return;
+      json(res, 405, { error: 'method not allowed' });
+    } catch (e) { console.error('lan:', e); if (!res.headersSent) json(res, 500, { error: 'error' }); else res.end(); }
+  });
+  lan.requestTimeout = 15000; lan.headersTimeout = 10000;
+  lan.on('error', e => console.error(`trigger port ${CFG.triggerPort} unavailable: ${e.code || e.message}. Sleep/handoff only work on the main port until fixed.`));
+  lan.listen(CFG.triggerPort, CFG.triggerHost, () => console.log(`trigger port on http://${CFG.triggerHost}:${CFG.triggerPort}  (sleep, wake, power, handoff only)`));
+}
